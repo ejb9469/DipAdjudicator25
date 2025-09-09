@@ -2,6 +2,8 @@ import java.util.*;
 
 public class TestCase {
 
+    public static final String TESTCASE_PREFIX = "TEST CASE - ";
+
     private final String        name;
     private final List<Order>   orders;
 
@@ -14,10 +16,17 @@ public class TestCase {
     public TestCase(String name, Order... orders) {
         this.name = name;
         List<Order> ordersList = Arrays.asList(orders);
-        //Collections.shuffle(ordersList);
+        //Collections.shuffle(ordersList);  // Cannot shuffle here, must be done layer(s) up
         this.orders = new ArrayList<>(ordersList);
-        actualFields = new ArrayList<>(this.orders.size());
-        score = this.orders.size();
+        this.actualFields = new ArrayList<>(this.orders.size());
+        this.score = this.orders.size();
+    }
+
+    public TestCase(String name, List<Order> orders) {
+        this.name = name;
+        this.orders = new ArrayList<>(orders);
+        this.actualFields = new ArrayList<>(this.orders.size());
+        this.score = this.orders.size();
     }
 
 
@@ -39,7 +48,7 @@ public class TestCase {
 
     public void eval(boolean print) {
 
-        StringBuilder output = new StringBuilder(this.name.toUpperCase()+":\n\n");
+        StringBuilder output = new StringBuilder(TESTCASE_PREFIX+this.name+":\n\n");
 
         if (expectedFields == null) {  // Debug output -- no expected fields
 
@@ -111,9 +120,17 @@ public class TestCase {
         return eval;
     }
 
+    public int getScore() {
+        return score;
+    }
+
 
     public void printEval() {
         System.out.println(eval+"\n\n");
+    }
+
+    public void printNameAndScore() {
+        System.out.printf("%s%s: \t\t\t[%02d/%02d]\n", TESTCASE_PREFIX, this.getName(), this.score, this.orders.size());
     }
 
 }

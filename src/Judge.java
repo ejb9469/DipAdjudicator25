@@ -109,7 +109,7 @@ public class Judge {
 
         }
 
-        // Handle SUPPORT ORDERS
+        // Handle SUPPORT orders
         else if (order.orderType == OrderType.SUPPORT) {
 
             for (Order order2 : orders) {
@@ -152,8 +152,8 @@ public class Judge {
         // Handle RETREAT & PIFF orders (retreats phase)
         else if (order.orderType == OrderType.RETREAT) {
 
-            // Retreated off the board
-            // technically successful; SPECIAL CASE, will be handled at the unit removal level
+            // Retreated off the board; 'piffed'
+            // technically successful order; SPECIAL CASE, will be handled at the unit removal level
             if (order.pos1 == null)
                 return true;
 

@@ -66,8 +66,11 @@ public class Order {
                 output += "- " + pos2.name();
         } else if (orderType == OrderType.CONVOY) {
             output += " C " + pos1.name() + " - " + pos2.name();
-        } else {
-            output += " ???";
+        } else if (orderType == OrderType.RETREAT) {
+            if (pos1 == null)
+                output += " PIFF";
+            else
+                output += " R " + pos1.name();
         }
 
         return output;

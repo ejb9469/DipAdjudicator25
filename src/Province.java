@@ -98,12 +98,16 @@ public enum Province {
 
     private static final Map<String, Province> validNames = new HashMap<>();  //{"Bohemia", "Budapest"};  // TODO
 
+
     public static Map<String, String> generateFullNamesToAbbreviationsMap() {
+
         Map<String, String> map = new HashMap<>();
+
         for (Province province : Province.values()) {
             map.put(province.getName(), province.name());
         }
         return map;
+
     }
 
     private Province(String name, boolean coastal, boolean supplyCenter, boolean splitCoast) {
