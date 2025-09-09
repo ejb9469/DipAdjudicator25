@@ -33,13 +33,16 @@ public class Order {
 
     @Override
     public String toString() {
-        return String.format("%s %s %s %s %s %s\t\t\tresolved:%b\tverdict:%b",
+        return String.format("%s %s %s %s %s %s",
                 owner.toString().charAt(0)+owner.toString().substring(1,2).toLowerCase(),
                 unitType.toString().charAt(0),
                 pos0.toString(),
-                orderType.toString(),
-                pos1, Objects.requireNonNullElse(pos2, ""),
-                resolved, verdict);
+                orderType.toString().substring(0,4),
+                pos1, Objects.requireNonNullElse(pos2, ""));
+    }
+
+    public String metaToString() {
+        return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
 
 }
