@@ -9,6 +9,8 @@ public class TestCase {
     private List<boolean[]> actualFields = null;
     private int score = 0;
 
+    String eval = null;
+
     public TestCase(String name) {
         this.name = name;
     }
@@ -23,13 +25,14 @@ public class TestCase {
     }
 
 
-    public void eval() {
+    public void eval(boolean print) {
 
-        if (expectedFields == null) {  // Debug output
+        StringBuilder output = new StringBuilder(this.name.toUpperCase()+":\n\n");
 
-            System.out.println(this.name.toUpperCase()+":");
+        if (expectedFields == null) {  // Debug output -- no expected fields
+
             for (Order order : orders)
-                System.out.printf("%s\n\t%s\n", order.toString(), order.metaToString());
+                output.append(String.format("%s\n\t%s\n", order.toString(), order.metaToString()));
 
         } else {
 
@@ -38,21 +41,31 @@ public class TestCase {
 
             this.judge();
 
-            System.out.println(this.name.toUpperCase()+":");
-
             for (int i = 0; i < orders.size(); i++) {
                 if (!Arrays.equals(expectedFields.get(i),actualFields.get(i)))
                     score--;
-                System.out.printf("%s\n\t%s\n\t%s:%s\n\t%s:%s\n",
+                output.append(String.format("%s\n\t%s\n\t%s:%s\n\t%s:%s\n",
                         orders.get(i).toString(), orders.get(i).metaToString(),
                         "EXPECTED", Arrays.toString(expectedFields.get(i)),
-                        "ACTUAL", Arrays.toString(actualFields.get(i)));
+                        "ACTUAL", Arrays.toString(actualFields.get(i))));
             }
 
-            System.out.printf("SCORE: %d/%d\n", score, orders.size());
+            output.append(String.format("\nSCORE: %d/%d", score, orders.size()));
+
+            this.eval = output.toString();
+            if (print)
+                this.printEval();
 
         }
 
+    }
+
+    public void eval() {
+        eval(false);
+    }
+
+    public void printEval() {
+        System.out.println(eval+"\n\n");
     }
 
     private void judge() {

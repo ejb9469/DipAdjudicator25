@@ -26,8 +26,18 @@ public class CourtManager {
                 new Order(Nation.GERMANY, UnitType.FLEET, Province.IRI, OrderType.SUPPORT, Province.Wal, Province.ENG));
 
         testCaseA.setExpectedFields(false, false, false, true, true);
+        //testCaseA.eval(true);
 
-        testCaseA.eval();
+        TestCase testCaseB = new TestCase("Test Case 2 -- Example",
+                new Order(Nation.AUSTRIA, UnitType.FLEET, Province.Tri, OrderType.HOLD),
+                new Order(Nation.ITALY, UnitType.ARMY, Province.Ven, OrderType.MOVE, Province.Tri),
+                new Order(Nation.ITALY, UnitType.ARMY, Province.Tyr, OrderType.SUPPORT, Province.Ven, Province.Tri),
+                new Order(Nation.GERMANY, UnitType.ARMY, Province.Mun, OrderType.MOVE, Province.Tyr),
+                new Order(Nation.RUSSIA, UnitType.ARMY, Province.Sil, OrderType.MOVE, Province.Mun),
+                new Order(Nation.RUSSIA, UnitType.ARMY, Province.Ber, OrderType.SUPPORT, Province.Sil, Province.Mun));
+
+        testCaseB.setExpectedFields(true, false, false, false, true, true);
+        testCaseB.eval(true);
 
     }
 

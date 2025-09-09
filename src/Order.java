@@ -31,6 +31,10 @@ public class Order {
         this(owner, unitType, origin, orderType, pos1, null);
     }
 
+    public Order(Nation owner, UnitType unitType, Province origin, OrderType orderType) {
+        this(owner, unitType, origin, orderType, null, null);
+    }
+
 
     public String unitToString() {
 
