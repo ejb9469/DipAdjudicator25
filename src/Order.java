@@ -1,5 +1,3 @@
-import java.util.Objects;
-
 public class Order {
 
     public Nation owner;
@@ -12,6 +10,7 @@ public class Order {
     public boolean resolved;
     public boolean verdict;
     public boolean visited;
+
 
     public Order(Nation owner, UnitType unitType, Province origin, OrderType orderType, Province pos1, Province pos2, boolean dislodged) {
         this.owner = owner;
@@ -45,6 +44,10 @@ public class Order {
 
     }
 
+    public String metaToString() {
+        return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
+    }
+
 
     @Override
     public String toString() {
@@ -69,10 +72,6 @@ public class Order {
 
         return output;
 
-    }
-
-    public String metaToString() {
-        return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
 
 }

@@ -2,26 +2,38 @@ import java.util.*;
 
 public class TestCase {
 
-    private final String name;
-    private final List<Order> orders = new ArrayList<>();
+    private final String        name;
+    private final List<Order>   orders;
 
-    private List<boolean[]> expectedFields = null;
-    private List<boolean[]> actualFields = null;
-    private int score = 0;
+    private List<boolean[]>     expectedFields = null;
+    private List<boolean[]>     actualFields = null;
+    private int                 score = 0;
+    private String              eval = null;
 
-    String eval = null;
-
-    public TestCase(String name) {
-        this.name = name;
-    }
 
     public TestCase(String name, Order... orders) {
-        this(name);
+        this.name = name;
         List<Order> ordersList = Arrays.asList(orders);
         //Collections.shuffle(ordersList);
-        this.orders.addAll(ordersList);
+        this.orders = new ArrayList<>(ordersList);
         actualFields = new ArrayList<>(this.orders.size());
         score = this.orders.size();
+    }
+
+
+    private void judge() {
+
+        Judge judge;
+        if (!orders.isEmpty())
+            judge = new Judge(new ArrayList<>(orders));
+        else
+            judge = new Judge();
+
+        judge.judge();
+
+        for (Order order : judge.getOrders())
+            actualFields.add(new boolean[]{order.verdict});  // Can expand with more fields later
+
     }
 
 
@@ -64,25 +76,6 @@ public class TestCase {
         eval(false);
     }
 
-    public void printEval() {
-        System.out.println(eval+"\n\n");
-    }
-
-    private void judge() {
-
-        Judge judge;
-        if (!orders.isEmpty())
-            judge = new Judge(new ArrayList<>(orders));
-        else
-            judge = new Judge();
-
-        judge.judge();
-
-        for (Order order : judge.getOrders())
-            actualFields.add(new boolean[]{order.verdict});  // Can expand with more fields later
-
-    }
-
 
     public void setExpectedFields(boolean[]... fields) {
 
@@ -112,6 +105,15 @@ public class TestCase {
 
     public List<Order> getOrders() {
         return orders;
+    }
+
+    public String getEval() {
+        return eval;
+    }
+
+
+    public void printEval() {
+        System.out.println(eval+"\n\n");
     }
 
 }

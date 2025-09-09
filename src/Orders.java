@@ -19,7 +19,7 @@ public abstract class Orders {
         Collection<Order> ordersOut = new ArrayList<>();
 
         for (Order order : orders) {
-            if (order.orderType != OrderType.MOVE)
+            if (order.orderType != OrderType.MOVE && order.orderType != OrderType.RETREAT)
                 continue;
 
             if (order.pos1 == pos)

@@ -38,6 +38,7 @@ public class Judge {
 
     private boolean adjudicate(Order order, boolean optimistic) {
 
+        // Handle MOVE orders
         if (order.orderType == OrderType.MOVE) {
 
             int attackStrength;
@@ -106,7 +107,10 @@ public class Judge {
 
             }
 
-        } else if (order.orderType == OrderType.SUPPORT) {
+        }
+
+        // Handle SUPPORT ORDERS
+        else if (order.orderType == OrderType.SUPPORT) {
 
             for (Order order2 : orders) {
 
@@ -128,7 +132,10 @@ public class Judge {
 
             return true;
 
-        } else {  // HOLDS and CONVOYS
+        }
+
+        // Handle HOLDS and CONVOYS
+        else if (order.orderType == OrderType.CONVOY || order.orderType == OrderType.HOLD) {
 
             Collection<Order> assailants = Orders.unitsMovingToPosition(order.pos0, orders);
             for (Order order2 : assailants) {
@@ -141,6 +148,24 @@ public class Judge {
             return true;
 
         }
+
+        // Handle RETREAT & PIFF orders (retreats phase)
+        else if (order.orderType == OrderType.RETREAT) {
+
+            // Retreated off the board
+            // technically successful; SPECIAL CASE, will be handled at the unit removal level
+            if (order.pos1 == null)
+                return true;
+
+            // The retreat fails if & only if there is another (dislodged) unit retreating there
+            Collection<Order> bouncers = Orders.unitsMovingToPosition(order.pos1, orders);
+            return (bouncers.size() > 1);
+
+        }
+
+        // Unknown / impossible order type, throw exception
+        System.err.println("LINE 158 :: Judge.java");
+        throw new IllegalStateException("Impossible OrderType");
 
     }
 
