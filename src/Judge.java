@@ -24,22 +24,6 @@ public class Judge {
     private boolean     uncertain = false;
 
 
-    public static void main(String[] args) {
-
-        TestCase testCase1 = new TestCase("Test Case 1 -- Example",
-                new Order(Nation.ENGLAND, UnitType.FLEET, Province.ENG, OrderType.MOVE, Province.Bre),
-                new Order(Nation.FRANCE, UnitType.FLEET, Province.Bre, OrderType.MOVE, Province.MAO),
-                new Order(Nation.ITALY, UnitType.FLEET, Province.MAO, OrderType.MOVE, Province.ENG),
-                new Order(Nation.AUSTRIA, UnitType.FLEET, Province.Wal, OrderType.MOVE, Province.ENG),
-                new Order(Nation.GERMANY, UnitType.FLEET, Province.IRI, OrderType.SUPPORT, Province.Wal, Province.ENG));
-
-        testCase1.setExpectedFields(new boolean[]{false}, new boolean[]{false}, new boolean[]{false}, new boolean[]{true}, new boolean[]{true});
-
-        testCase1.eval();
-
-    }
-
-
     public List<Order> getOrders() {
         return orders;
     }

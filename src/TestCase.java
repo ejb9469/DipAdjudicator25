@@ -81,6 +81,17 @@ public class TestCase {
 
     }
 
+    public void setExpectedFields(boolean... fields) {
+
+        if (fields.length != orders.size())
+            throw new IndexOutOfBoundsException("`len(fields)` != `orders.size()`");
+
+        expectedFields = new ArrayList<>();
+        for (boolean field : fields)
+            expectedFields.add(new boolean[]{field});
+
+    }
+
 
     public String getName() {
         return name;

@@ -31,14 +31,40 @@ public class Order {
         this(owner, unitType, origin, orderType, pos1, null);
     }
 
+
+    public String unitToString() {
+
+        String output = owner.getPrefix() + " ";
+        output += unitType.name().charAt(0) + " ";
+        output += pos0.name();
+        return output;
+
+    }
+
+
     @Override
     public String toString() {
-        return String.format("%s %s %s %s %s %s",
-                owner.toString().charAt(0)+owner.toString().substring(1,2).toLowerCase(),
-                unitType.toString().charAt(0),
-                pos0.toString(),
-                orderType.toString().substring(0,4),
-                pos1, Objects.requireNonNullElse(pos2, ""));
+
+        String output = this.unitToString();
+
+        if (orderType == OrderType.MOVE) {
+            output += " - " + pos1.name();  // .getName() would return the PROVINCE's full name
+        } else if (orderType == OrderType.HOLD) {
+            output += " H ";
+        } else if (orderType == OrderType.SUPPORT) {
+            output += " S " + pos1.name() + " ";
+            if (pos2 == null)
+                output += "H";
+            else
+                output += "- " + pos2.name();
+        } else if (orderType == OrderType.CONVOY) {
+            output += " C " + pos1.name() + " - " + pos2.name();
+        } else {
+            output += " ???";
+        }
+
+        return output;
+
     }
 
     public String metaToString() {
