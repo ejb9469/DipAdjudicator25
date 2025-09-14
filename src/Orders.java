@@ -47,7 +47,7 @@ public abstract class Orders {
 
     }
 
-    public static boolean adjacentConvoyingFleetExists(Order order, Collection<Order> orders) {
+    public static boolean adjacentMatchingConvoyFleetExists(Order order, Collection<Order> orders) {
 
         for (Order order2 : orders) {
             if (order2.equals(order))

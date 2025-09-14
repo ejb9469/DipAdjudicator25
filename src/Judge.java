@@ -292,7 +292,7 @@ public class Judge {
             else
                 return true;
 
-        } else if (Orders.adjacentConvoyingFleetExists(moveOrder, orders)) {
+        } else if (Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders)) {
 
             List<Order> convoyPath = Convoys.drawConvoyPath(moveOrder, (List<Order>) orders);
             boolean allConvoysSuccessful = true;
