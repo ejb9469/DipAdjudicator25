@@ -10,7 +10,7 @@ public abstract class Convoys {
      * @param orders List of all orders
      * @return One possible convoy path for `moveOrder`
      */
-    public static List<Order> drawConvoyPath(Order moveOrder, List<Order> orders) {
+    public static List<Order> drawConvoyPath(Order moveOrder, Collection<Order> orders) {
 
         List<Order> convoyPath;
         List<Order> beginningConvoys = new ArrayList<>();
@@ -30,7 +30,7 @@ public abstract class Convoys {
         Order firstConvoy = beginningConvoys.getFirst();
         List<Order> initPath = new ArrayList<>();
         initPath.add(firstConvoy);
-        convoyPath = convoyPath(firstConvoy, initPath, new ArrayList<>(), orders);
+        convoyPath = convoyPath(firstConvoy, initPath, new ArrayList<>(), (List<Order>) orders);
 
         return convoyPath;
 

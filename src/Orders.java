@@ -3,6 +3,21 @@ import java.util.Collection;
 
 public abstract class Orders {
 
+
+
+    public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
+
+        Collection<Order> newOrders = new ArrayList<>();
+        for (Order order : orders) {
+            if (orderType == order.orderType)
+                newOrders.add(order);
+        }
+
+        return newOrders;
+
+    }
+
+
     public static Order unitAtPosition(Province pos, Collection<Order> orders) {
 
         for (Order order : orders) {

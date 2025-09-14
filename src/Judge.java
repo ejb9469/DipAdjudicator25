@@ -52,7 +52,7 @@ public class Judge {
                 attackStrength = calculateAttackStrength(order, optimistic, true, orders);
 
                 // Calculate opponent's DEFEND STRENGTH
-                int opponentDefendStrength = calculateDefendStrength(headToHead, !optimistic, orders);
+                int opponentDefendStrength = calculateDefendStrength(headToHead, optimistic, orders);
 
                 if (attackStrength > opponentDefendStrength) {
 
@@ -82,7 +82,7 @@ public class Judge {
                 attackStrength = calculateAttackStrength(order, optimistic, false, orders);
 
                 // Calculate destination's HOLD STRENGTH
-                int destHoldStrength = calculateHoldStrength(order.pos1, !optimistic, orders);
+                int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
 
                 if (attackStrength > destHoldStrength) {
 
@@ -140,9 +140,8 @@ public class Judge {
             Collection<Order> assailants = Orders.unitsMovingToPosition(order.pos0, orders);
             for (Order order2 : assailants) {
                 if (order2.equals(order)) continue;
-                if (resolve(order2, !optimistic)) {
+                if (resolve(order2, !optimistic))
                     return false;
-                }
             }
 
             return true;
@@ -201,18 +200,21 @@ public class Judge {
         uncertain = false;
         boolean optResult = this.adjudicate(order, true);
         boolean pesResult;
-        /*// Try to avoid a 2nd adjudication for performance
+        // Try to avoid a 2nd adjudication for performance
         if (optResult && uncertain)
             pesResult = this.adjudicate(order, false);
         else
-            pesResult = optResult;*/
-        pesResult = this.adjudicate(order, false);
+            pesResult = optResult;
+        //pesResult = this.adjudicate(order, false);
         order.visited = false;  // Un-block recursion for this Order
 
         if (optResult == pesResult) {
             // We have a single resolution
             // Delete any cycle info that was found in recursion
-            cycle.subList(0, cycleLen_Old).clear();
+            if (cycleLen_Old >= cycle.size())
+                cycle.clear();
+            else
+                cycle.subList(0, cycleLen_Old).clear();
             recursionHits = recursionHits_Old;
             // The uncertain variable must be unaltered, because the order is now resolved
             uncertain = uncertain_Old;
@@ -232,7 +234,7 @@ public class Judge {
             // We have sufficiently retreated from recursion such that ...
             // ... this order is the ancestor of the whole cycle
             // Apply the backup rule on all orders in the cycle
-            this.backupRule(cycle.subList(0, cycleLen_Old));
+            this.backupRule(cycle.subList(cycleLen_Old, cycle.size()));
             cycle.subList(0, cycleLen_Old).clear();
             uncertain = uncertain_Old;
             // The backup rule may not have resolved THIS order
@@ -259,12 +261,12 @@ public class Judge {
         }
 
         if (areAllMovers) {
-            for (Order order : orders) {
+            for (Order order : cyclicalOrders) {
                 order.resolved = true;
                 order.verdict = true;
             }
         } else {
-            szykmanRule(orders);
+            szykmanRule(cyclicalOrders);
         }
 
     }
@@ -273,8 +275,9 @@ public class Judge {
 
         for (Order order : cyclicalOrders) {
             if (order.orderType == OrderType.CONVOY) {
-                order.resolved = true;
-                order.verdict = false;
+                order.pos1 = null;
+                order.pos2 = null;
+                order.orderType = OrderType.HOLD;
             }
         }
 
@@ -283,31 +286,63 @@ public class Judge {
 
     private boolean pathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
-        if (moveOrder.pos0.isAdjacentTo(moveOrder.pos1)) {
+        // Basic edge case tests; fleets cannot go inland, fleets cannot be convoyed, etc.
+        if (moveOrder.unitType == UnitType.ARMY && moveOrder.pos1.isWater())
+            // Armies cannot go into water
+            return false;
+        else if (moveOrder.unitType == UnitType.FLEET && !moveOrder.pos1.isWater() && !moveOrder.pos1.isCoastal())
+            // Fleets cannot go inland
+            return false;
+        else if (moveOrder.unitType == UnitType.FLEET && !moveOrder.pos0.isAdjacentTo(moveOrder.pos1))
+            // Fleets cannot skip provinces (i.e. cannot be convoyed)
+            return false;
 
-            if (moveOrder.unitType == UnitType.ARMY && moveOrder.pos1.isWater())
-                return false;
-            else if (moveOrder.unitType == UnitType.FLEET && !moveOrder.pos1.isWater() && !moveOrder.pos1.isCoastal())
-                return false;
-            else
-                return true;
+        boolean treatAsConvoyingArmy = (moveOrder.unitType == UnitType.ARMY &&
+                Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders));
+        if (!treatAsConvoyingArmy) {
+
+            return true;  // Valid path, and no convoying required
 
         } else if (Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders)) {
 
-            List<Order> convoyPath = Convoys.drawConvoyPath(moveOrder, (List<Order>) orders);
-            boolean allConvoysSuccessful = true;
+            // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
+            // If the first route is unsuccessful, begin looping for possible convoy routes
+
+            Collection<Order> convoyOrders = Orders.pruneForOrderType(OrderType.CONVOY, orders);
+            List<Order> convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
+            List<Order> unsuccessfulConvoys = new ArrayList<>();
             for (Order convoyOrder : convoyPath) {
-                if (!resolve(convoyOrder, optimistic)) {
-                    allConvoysSuccessful = false;
-                    break;
-                }
+                if (!resolve(convoyOrder, optimistic))
+                    unsuccessfulConvoys.add(convoyOrder);
             }
 
-            return allConvoysSuccessful;
-            // TODO: Change to support Multiple Convoy Routes:
-            //         Check if there is a different convoy route,
-            //          ... comprised of fleets that are all successful.
-            //         Continue to check until `Convoys.drawConvoyPath()` fails.
+            if (unsuccessfulConvoys.isEmpty())
+                return true;
+            else {
+
+                // Multiple Convoy Routes:
+                // Check if there is a different convoy route,
+                // ... comprised of fleets that are all successful.
+                // Continue to check until `Convoys.drawConvoyPath()` returns an empty collection
+
+                convoyOrders.removeAll(unsuccessfulConvoys);
+                convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
+                for (; !convoyPath.isEmpty(); convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+                    unsuccessfulConvoys.clear();
+                    for (Order convoyOrder : convoyPath) {
+                        if (!resolve(convoyOrder, optimistic))
+                            unsuccessfulConvoys.add(convoyOrder);
+                    }
+                    if (unsuccessfulConvoys.isEmpty())
+                        return true;
+                    else
+                        convoyOrders.removeAll(unsuccessfulConvoys);
+                }
+
+                // No convoy path available
+                return false;
+
+            }
 
         } else
             return false;

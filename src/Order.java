@@ -34,6 +34,13 @@ public class Order {
         this(owner, unitType, origin, orderType, null, null);
     }
 
+    public Order(Order order2) {
+        this(order2.owner, order2.unitType, order2.pos0, order2.orderType, order2.pos1, order2.pos2, order2.dislodged);
+        this.resolved = order2.resolved;
+        this.verdict = order2.verdict;
+        this.visited = order2.visited;
+    }
+
 
     public String unitToString() {
 
@@ -76,5 +83,26 @@ public class Order {
         return output;
 
     }
+
+
+    public boolean equals(Object other) {
+
+        if (!(other instanceof Order))
+            return false;
+
+        Order order2;
+        try {
+            order2 = (Order) other;
+        } catch (ClassCastException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+
+        return (this.owner == order2.owner && this.unitType == order2.unitType && this.orderType == order2.orderType &&
+                this.pos0 == order2.pos0 && this.pos1 == order2.pos1 && this.pos2 == order2.pos2 &&
+                this.dislodged == order2.dislodged);
+
+    }
+
 
 }

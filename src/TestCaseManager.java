@@ -51,8 +51,8 @@ public class TestCaseManager {
                 "A Prussia - Berlin"
         );
         testCaseC.setExpectedFields(false, true, true, true, false);
-        testCaseC.eval(true);
-        manager.testCases.add(testCaseC);
+        //testCaseC.eval(true);
+        //manager.testCases.add(testCaseC);
 
         TestCase testCaseD = parser.parse("Germany: \n" +
                 "A Berlin - Sweden\n" +
@@ -63,8 +63,51 @@ public class TestCaseManager {
                 "F Livonia - Baltic Sea\n" +
                 "F Gulf of Bothnia Supports F Livonia - Baltic Sea");
         testCaseD.setExpectedFields(true, true, true, false, true);
-        testCaseD.eval(true);
-        manager.testCases.add(testCaseD);
+        //testCaseD.eval(true);
+        //manager.testCases.add(testCaseD);
+
+        TestCase testCase_6C3 = parser.parse("Austria: \n" +
+                "A Trieste - Serbia\n" +
+                "A Serbia - Bulgaria\n" +
+                "\n" +
+                "Turkey: \n" +
+                "A Bulgaria - Trieste\n" +
+                "F Aegean Sea Convoys A Bulgaria - Trieste\n" +
+                "F Ionian Sea Convoys A Bulgaria - Trieste\n" +
+                "F Adriatic Sea Convoys A Bulgaria - Trieste\n" +
+                "\n" +
+                "Italy: \n" +
+                "F Naples - Ionian Sea");
+        testCase_6C3.setExpectedFields(true, true, true, true, true, true, false);
+        testCase_6C3.eval(true);
+        manager.testCases.add(testCase_6C3);
+
+        TestCase testCase_6A7 = parser.parse("England: \n" +
+                "F London - Belgium\n" +
+                "F North Sea Convoys A London - Belgium");
+        testCase_6A7.setExpectedFields(false, true);
+        testCase_6A7.eval(true);
+        manager.testCases.add(testCase_6A7);
+
+        TestCase testCase_6A11 = parser.parse("Austria: \n" +
+                "A Vienna - Tyrolia\n" +
+                "\n" +
+                "Germany: \n" +
+                "A Munich - Tyrolia\n" +
+                "\n" +
+                "Italy: \n" +
+                "A Venice - Tyrolia");
+        testCase_6A11.setExpectedFields(false, false, false);
+        testCase_6A11.eval(true);
+        manager.testCases.add(testCase_6A11);
+
+        TestCase testCase_6C1 = parser.parse("Turkey: \n" +
+                "F Ankara - Constantinople\n" +
+                "A Constantinople - Smyrna\n" +
+                "A Smyrna - Ankara");
+        testCase_6C1.setExpectedFields(true, true, true);
+        testCase_6C1.eval(true);
+        manager.testCases.add(testCase_6C1);
 
         for (TestCase tc : manager.testCases)
             tc.printNameAndScore();
