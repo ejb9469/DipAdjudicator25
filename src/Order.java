@@ -5,7 +5,9 @@ public class Order {
     public OrderType orderType;
     public Province pos0, pos1, pos2;
 
-    public boolean dislodged;
+
+    public boolean rejectsSupport = false;
+    public boolean dislodged = false;
 
     public boolean resolved;
     public boolean verdict;

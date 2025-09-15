@@ -4,6 +4,17 @@ import java.util.Collection;
 public abstract class Orders {
 
 
+    public static Collection<Order> cleanse(Collection<Order> orders) {
+
+        Collection<Order> orders2 = new ArrayList<>();
+        for (Order order : orders) {
+            if (Orders.orderIsValid(order))
+                orders2.add(order);
+        }
+
+        return orders2;
+
+    }
 
     public static boolean orderIsValid(Order order) {
 
@@ -12,7 +23,11 @@ public abstract class Orders {
         switch (order.orderType) {
 
             case MOVE -> {
-                // Basic edge case tests; fleets cannot go inland, fleets cannot be convoyed, etc.
+                if (order.pos0 == order.pos1)
+                    // Units cannot order to their own location
+                    // Locations in `Province` are not adjacent to themselves regardless,
+                    // ... but for posterity's sake, we deem these moves illegal
+                    return false;
                 if (order.unitType == UnitType.ARMY && order.pos1.isWater())
                     // Armies cannot go into water
                     return false;
@@ -26,6 +41,10 @@ public abstract class Orders {
             }
 
             case SUPPORT, CONVOY -> {
+                // Moves from Pos1-->Pos1 are illegal,
+                // and support-holds are formatted with `pos2` == null
+                if (order.pos1 == order.pos2)
+                    return false;
                 // Support & convoy orders must be adjacent to their dest. location
                 if (!order.pos0.isAdjacentTo(order.pos2))
                     return false;
@@ -34,13 +53,12 @@ public abstract class Orders {
 
             case HOLD -> {
                 // Hold orders must have no location fields
-                if (order.pos0 != null || order.pos1 != null)
-                    return false;
-                return true;
+                return order.pos0 == null && order.pos1 == null;
             }
 
             case RETREAT -> {
                 // Retreat orders must be adjacent to their dest. location
+                // (No convoys for Retreat orders!)
                 if (order.pos0 != order.pos2)
                     return false;
                 // Must pass 'Move order tests'

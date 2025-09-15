@@ -5,17 +5,17 @@ public class TestCaseManager {
 
 
     private final List<TestCase> testCases;
-    private boolean isPrinting;
+    private boolean prints;
 
 
     public TestCaseManager() {
         this.testCases = new ArrayList<>();
-        this.isPrinting = true;
+        this.prints = true;
     }
 
     public TestCaseManager(boolean isPrinting) {
         this.testCases = new ArrayList<>();
-        this.isPrinting = isPrinting;
+        this.prints = isPrinting;
     }
 
 
@@ -23,12 +23,12 @@ public class TestCaseManager {
         return this.testCases;
     }
 
-    public boolean isPrinting() {
-        return this.isPrinting;
+    public boolean prints() {
+        return this.prints;
     }
 
     public void togglePrint() {
-        this.isPrinting = !isPrinting;
+        this.prints = !prints;
     }
 
 
@@ -36,14 +36,14 @@ public class TestCaseManager {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
         if (evalNow)
-            testCase.eval(this.isPrinting);
+            testCase.eval(this.prints);
     }
 
     public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
         if (evalNow)
-            testCase.eval(this.isPrinting);
+            testCase.eval(this.prints);
     }
 
 
@@ -64,7 +64,7 @@ public class TestCaseManager {
 
     public static void main(String[] args) {
 
-        example();
+        //example();
         System.out.println("----------------------------------------\n\n");
 
         TestCaseManager manager = new TestCaseManager(true);
@@ -72,8 +72,9 @@ public class TestCaseManager {
 
         List<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(testCases);
+        System.out.println("\n");
         for (TestCase testCase : manager.testCases)
-            testCase.eval(manager.isPrinting);
+            testCase.eval(manager.prints);
 
     }
 

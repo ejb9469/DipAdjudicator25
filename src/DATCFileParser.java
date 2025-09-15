@@ -80,10 +80,25 @@ public class DATCFileParser extends DATCParser {
 
     private boolean[] parseSolution(String solution) {
 
+        // Current version of this method works for single-boolean (verdict) only
+
         String[] sourceLines = solution.lines().toArray(String[]::new);
-        boolean[] verdicts = new boolean[sourceLines.length];
-        for (int i = 0; i < sourceLines.length; i++)
-            verdicts[i] = Boolean.parseBoolean(sourceLines[i]);
+        int numGarbageLines = 0;
+        for (String line : sourceLines) {
+            if (line.isBlank())
+                numGarbageLines++;
+        }
+
+        boolean[] verdicts = new boolean[sourceLines.length - numGarbageLines];
+        int encounteredGarbageLines = 0;
+        for (int i = 0; i < sourceLines.length; i++) {
+            String line = sourceLines[i];
+            if (line.isBlank()) {
+                encounteredGarbageLines++;
+                continue;
+            }
+            verdicts[i - encounteredGarbageLines] = Boolean.parseBoolean(line.strip());
+        }
 
         return verdicts;
 

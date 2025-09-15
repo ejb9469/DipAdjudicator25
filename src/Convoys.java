@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public abstract class Convoys {
+public abstract class Convoys extends Orders {
 
     /**
      * Draws one possible convoy path for a given move Order

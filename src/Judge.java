@@ -7,7 +7,7 @@ public class Judge {
         // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
         // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
 
-    private final List<Order> orders;
+    protected final List<Order> orders;
 
 
     public Judge(List<Order> orders) {
@@ -35,6 +35,7 @@ public class Judge {
             resolve(order, true);
 
     }
+
 
     private boolean adjudicate(Order order, boolean optimistic) {
 
@@ -346,6 +347,11 @@ public class Judge {
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
 
             for (Order order2 : orders) {
+
+                // Invalid / illegal supports do not count
+                if (!Orders.orderIsValid(order))
+                    continue;
+
                 if (order2.equals(order) || order2.orderType != OrderType.SUPPORT)
                     continue;
 
@@ -381,6 +387,11 @@ public class Judge {
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
 
             for (Order order2 : orders) {
+
+                // Invalid / illegal supports do not count
+                if (!Orders.orderIsValid(order))
+                    continue;
+
                 if (order2.equals(order) || order2.orderType != OrderType.SUPPORT ||
                         order2.owner == forbiddenOwner)
                     continue;
