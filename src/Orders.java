@@ -105,6 +105,7 @@ public abstract class Orders {
         Collection<Order> ordersOut = new ArrayList<>();
 
         for (Order order : orders) {
+
             if (order.orderType != OrderType.MOVE && order.orderType != OrderType.RETREAT)
                 continue;
 
@@ -136,6 +137,7 @@ public abstract class Orders {
     public static boolean adjacentMatchingConvoyFleetExists(Order order, Collection<Order> orders) {
 
         for (Order order2 : orders) {
+
             if (order2.equals(order))
                 continue;
 

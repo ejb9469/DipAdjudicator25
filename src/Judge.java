@@ -31,8 +31,13 @@ public class Judge {
 
     public void judge() {
 
+        // 1st run
         for (Order order : orders)
-            resolve(order, true);
+            order.verdict = resolve(order, true);
+
+        // 2nd run
+        for (Order order : orders)
+            order.verdict = resolve(order, true);
 
     }
 
@@ -275,11 +280,13 @@ public class Judge {
     private void szykmanRule(List<Order> cyclicalOrders) {
 
         for (Order order : cyclicalOrders) {
+
             if (order.orderType == OrderType.CONVOY) {
                 order.pos1 = null;
                 order.pos2 = null;
                 order.orderType = OrderType.HOLD;
             }
+
         }
 
     }
@@ -295,7 +302,7 @@ public class Judge {
 
         if (!treatAsConvoyingArmy) {
             return true;  // Valid path, and no convoying required
-        } else if (Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders)) {
+        } else {
 
             // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
             // If the first route is unsuccessful, begin looping for possible convoy routes
@@ -314,8 +321,9 @@ public class Judge {
 
                 // Multiple Convoy Routes:
                 // Check if there is a different convoy route,
-                // ... comprised of fleets that are all successful.
-                // Continue to check until `Convoys.drawConvoyPath()` returns an empty collection
+                // ... comprised of fleets that are all successful
+                // Continue to check until `Convoys.drawConvoyPath()` returns an empty collection,
+                // ... or we find a path of successful convoys
 
                 convoyOrders.removeAll(unsuccessfulConvoys);
                 convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
@@ -336,8 +344,7 @@ public class Judge {
 
             }
 
-        } else
-            return false;
+        }
 
     }
 

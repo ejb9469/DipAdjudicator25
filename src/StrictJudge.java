@@ -5,12 +5,12 @@ public class StrictJudge extends Judge {
     @Override
     public void judge() {
 
-        this.cleanse();
+        this.cleanseOrders();
         super.judge();
 
     }
 
-    protected void cleanse() {
+    protected void cleanseOrders() {
 
         Collection<Order> cleanOrders = Orders.cleanse(this.orders);
         this.orders.clear();

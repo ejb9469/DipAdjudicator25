@@ -5,8 +5,6 @@ public class Order {
     public OrderType orderType;
     public Province pos0, pos1, pos2;
 
-
-    public boolean rejectsSupport = false;
     public boolean dislodged = false;
 
     public boolean resolved;
@@ -66,7 +64,7 @@ public class Order {
         if (orderType == OrderType.MOVE) {
             output += " - " + pos1.name();  // .getName() would return the PROVINCE's full name
         } else if (orderType == OrderType.HOLD) {
-            output += " H ";
+            output += " H";
         } else if (orderType == OrderType.SUPPORT) {
             output += " S " + pos1.name() + " ";
             if (pos2 == null)
