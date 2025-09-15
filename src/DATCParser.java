@@ -10,7 +10,7 @@ public class DATCParser implements TestCaseParser {
 
     public static final String TC_PREFIX = DATCParser.class.getName();
 
-    private int TC_ID = 1;
+    protected int TC_ID = 1;
 
 
     public TestCase parse(String source) {

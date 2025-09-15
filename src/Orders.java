@@ -5,6 +5,59 @@ public abstract class Orders {
 
 
 
+    public static boolean orderIsValid(Order order) {
+
+        // Does not check for appropriate-ness of convoys
+
+        switch (order.orderType) {
+
+            case MOVE -> {
+                // Basic edge case tests; fleets cannot go inland, fleets cannot be convoyed, etc.
+                if (order.unitType == UnitType.ARMY && order.pos1.isWater())
+                    // Armies cannot go into water
+                    return false;
+                else if (order.unitType == UnitType.FLEET && !order.pos1.isWater() && !order.pos1.isCoastal())
+                    // Fleets cannot go inland
+                    return false;
+                else if (order.unitType == UnitType.FLEET && !order.pos0.isAdjacentTo(order.pos1))
+                    // Fleets cannot skip provinces (i.e. cannot be convoyed)
+                    return false;
+                return true;
+            }
+
+            case SUPPORT, CONVOY -> {
+                // Support & convoy orders must be adjacent to their dest. location
+                if (!order.pos0.isAdjacentTo(order.pos2))
+                    return false;
+                return true;
+            }
+
+            case HOLD -> {
+                // Hold orders must have no location fields
+                if (order.pos0 != null || order.pos1 != null)
+                    return false;
+                return true;
+            }
+
+            case RETREAT -> {
+                // Retreat orders must be adjacent to their dest. location
+                if (order.pos0 != order.pos2)
+                    return false;
+                // Must pass 'Move order tests'
+                Order dummyMove = new Order(order);
+                dummyMove.orderType = OrderType.MOVE;
+                return orderIsValid(dummyMove);
+            }
+
+            default -> {
+                return false;
+            }
+
+        }
+
+    }
+
+
     public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
 
         Collection<Order> newOrders = new ArrayList<>();

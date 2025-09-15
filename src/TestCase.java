@@ -48,10 +48,12 @@ public class TestCase {
 
     public void eval(boolean print) {
 
-        StringBuilder output = new StringBuilder(TESTCASE_PREFIX+this.name+":\n\n");
+        String name = TESTCASE_PREFIX+this.name;
+        StringBuilder output = new StringBuilder(name+":\n\n");
 
         if (expectedFields == null) {  // Debug output -- no expected fields
 
+            System.out.println("NO EXPECTED FIELDS for...\t\t[" + name + "]");
             for (Order order : orders)
                 output.append(String.format("%s\n\t%s\n", order.toString(), order.metaToString()));
 

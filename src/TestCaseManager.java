@@ -3,15 +3,81 @@ import java.util.List;
 
 public class TestCaseManager {
 
+
     private final List<TestCase> testCases;
+    private boolean isPrinting;
 
 
     public TestCaseManager() {
         this.testCases = new ArrayList<>();
+        this.isPrinting = true;
+    }
+
+    public TestCaseManager(boolean isPrinting) {
+        this.testCases = new ArrayList<>();
+        this.isPrinting = isPrinting;
+    }
+
+
+    public List<TestCase> getTestCases() {
+        return this.testCases;
+    }
+
+    public boolean isPrinting() {
+        return this.isPrinting;
+    }
+
+    public void togglePrint() {
+        this.isPrinting = !isPrinting;
+    }
+
+
+    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean... expectedFields) {
+        testCase.setExpectedFields(expectedFields);
+        this.testCases.add(testCase);
+        if (evalNow)
+            testCase.eval(this.isPrinting);
+    }
+
+    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
+        testCase.setExpectedFields(expectedFields);
+        this.testCases.add(testCase);
+        if (evalNow)
+            testCase.eval(this.isPrinting);
+    }
+
+
+    public int score() {
+        int score = 0;
+        for (TestCase testCase : this.testCases)
+            score += testCase.getScore();
+        return score;
+    }
+
+    public int size() {
+        int size = 0;
+        for (TestCase testCase : this.testCases)
+            size += testCase.getOrders().size();
+        return size;
     }
 
 
     public static void main(String[] args) {
+
+        example();
+        System.out.println("----------------------------------------\n\n");
+
+        TestCaseManager manager = new TestCaseManager(true);
+        DATCFileParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
+
+        List<TestCase> testCases = fileParser.parseMany();
+        manager.testCases.addAll(testCases);
+        for (TestCase testCase : manager.testCases)
+            testCase.eval(manager.isPrinting);
+
+    }
+
+    public static void example() {
 
         TestCaseManager manager = new TestCaseManager();
 
@@ -114,9 +180,5 @@ public class TestCaseManager {
 
     }
 
-
-    public List<TestCase> getTestCases() {
-        return testCases;
-    }
 
 }

@@ -286,23 +286,14 @@ public class Judge {
 
     private boolean pathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
-        // Basic edge case tests; fleets cannot go inland, fleets cannot be convoyed, etc.
-        if (moveOrder.unitType == UnitType.ARMY && moveOrder.pos1.isWater())
-            // Armies cannot go into water
-            return false;
-        else if (moveOrder.unitType == UnitType.FLEET && !moveOrder.pos1.isWater() && !moveOrder.pos1.isCoastal())
-            // Fleets cannot go inland
-            return false;
-        else if (moveOrder.unitType == UnitType.FLEET && !moveOrder.pos0.isAdjacentTo(moveOrder.pos1))
-            // Fleets cannot skip provinces (i.e. cannot be convoyed)
+        if (!Orders.orderIsValid(moveOrder))
             return false;
 
         boolean treatAsConvoyingArmy = (moveOrder.unitType == UnitType.ARMY &&
                 Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders));
+
         if (!treatAsConvoyingArmy) {
-
             return true;  // Valid path, and no convoying required
-
         } else if (Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders)) {
 
             // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
@@ -327,7 +318,7 @@ public class Judge {
 
                 convoyOrders.removeAll(unsuccessfulConvoys);
                 convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
-                for (; !convoyPath.isEmpty(); convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+                for ( ; !convoyPath.isEmpty(); convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
                     unsuccessfulConvoys.clear();
                     for (Order convoyOrder : convoyPath) {
                         if (!resolve(convoyOrder, optimistic))
@@ -390,7 +381,8 @@ public class Judge {
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
 
             for (Order order2 : orders) {
-                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT || order2.owner == forbiddenOwner)
+                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT ||
+                        order2.owner == forbiddenOwner)
                     continue;
 
                 if (order2.pos1 == order.pos0 && order2.pos2 == order.pos1) {
@@ -403,7 +395,8 @@ public class Judge {
         } else {  // SUPPORT to HOLD
 
             for (Order order2 : orders) {
-                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT || order2.owner == forbiddenOwner)
+                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT ||
+                        order2.owner == forbiddenOwner)
                     continue;
 
                 if (order2.pos1 == order.pos0 && order2.pos2 == null) {
