@@ -62,9 +62,13 @@ public class Judge {
 
                 if (attackStrength > opponentDefendStrength) {
 
-                    Collection<Order> otherOpponents = Orders.unitsMovingToPosition(order.pos1, orders);
+                    Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
 
-                    // Calculate PREVENT STRENGTH of all 'opponents' (other movers going  to the same destination)
+                    // Move is completely unopposed
+                    if (otherOpponents.size() <= 1)
+                        return true;
+
+                    // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
                     // `champion` will be true if our Move order is the greatest (with no ties)
                     boolean champion = true;
                     for (Order order2 : otherOpponents) {
@@ -92,7 +96,7 @@ public class Judge {
 
                 if (attackStrength > destHoldStrength) {
 
-                    Collection<Order> otherOpponents = Orders.unitsMovingToPosition(order.pos1, orders);
+                    Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
 
                     // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
                     // `champion` will be true if our Move order is the greatest (with no ties)
@@ -140,13 +144,40 @@ public class Judge {
 
         }
 
-        // Handle HOLDS and CONVOYS
-        else if (order.orderType == OrderType.CONVOY || order.orderType == OrderType.HOLD) {
+        // Handle CONVOYS
+        else if (order.orderType == OrderType.CONVOY) {
 
-            Collection<Order> assailants = Orders.unitsMovingToPosition(order.pos0, orders);
-            for (Order order2 : assailants) {
-                if (order2.equals(order)) continue;
-                if (resolve(order2, !optimistic))
+            Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, orders);
+            for (Order assailant : assailants) {
+                if (assailant.equals(order)) continue;
+                if (resolve(assailant, !optimistic)) {
+
+                    Order matchingMoveOrder = Orders.locateMoveFromConvoy(order, this.orders);
+                    if (matchingMoveOrder != null)
+                        if (!matchingMoveOrder.pos0.isAdjacentTo(matchingMoveOrder.pos1)) {
+                            // There exists a Move to & from non-adjacent squares that matches this convoy's specifications,
+                            // and this convoy is now dislodged.
+                            // Therefore, the move cannot possibly go through
+                            matchingMoveOrder.resolved = true;
+                            matchingMoveOrder.verdict = false;
+                        }
+
+                    return false;
+
+                }
+            }
+
+            return true;
+
+        }
+
+        // Handle HOLDS
+        else if (order.orderType == OrderType.HOLD) {
+
+            Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, orders);
+            for (Order assailant : assailants) {
+                if (assailant.equals(order)) continue;
+                if (resolve(assailant, !optimistic))
                     return false;
             }
 
@@ -163,7 +194,7 @@ public class Judge {
                 return true;
 
             // The retreat fails if & only if there is another (dislodged) unit retreating there
-            Collection<Order> bouncers = Orders.unitsMovingToPosition(order.pos1, orders);
+            Collection<Order> bouncers = Orders.locateUnitsMovingToPosition(order.pos1, orders);
             return (bouncers.size() > 1);
 
         }
@@ -435,10 +466,10 @@ public class Judge {
         if (!pathSuccessful(order, optimistic, orders))
             return 0;
 
-        if (Orders.unitAtPosition(order.pos1, orders) == null)
+        if (Orders.locateUnitAtPosition(order.pos1, orders) == null)
             return 1+tallySuccessfulSupports(order, optimistic, orders);
 
-        Order destOrder = Orders.unitAtPosition(order.pos1, orders);
+        Order destOrder = Orders.locateUnitAtPosition(order.pos1, orders);
         if (!headToHead) {
             if (resolve(destOrder, optimistic)) {
                 return 1+tallySuccessfulSupports(order, optimistic, orders);
@@ -474,7 +505,7 @@ public class Judge {
 
     private int calculateHoldStrength(Province pos, boolean optimistic, Collection<Order> orders) {
 
-        Order occupant = Orders.unitAtPosition(pos, orders);
+        Order occupant = Orders.locateUnitAtPosition(pos, orders);
         if (occupant == null)
             return 0;
 

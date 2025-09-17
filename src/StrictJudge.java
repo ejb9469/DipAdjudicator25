@@ -2,6 +2,8 @@ import java.util.Collection;
 
 public class StrictJudge extends Judge {
 
+    protected Collection<Order> voidedOrders = null;
+
     @Override
     public void judge() {
 
@@ -11,11 +13,9 @@ public class StrictJudge extends Judge {
     }
 
     protected void cleanseOrders() {
-
-        Collection<Order> cleanOrders = Orders.cleanse(this.orders);
-        this.orders.clear();
-        this.orders.addAll(cleanOrders);
-
+        // `Orders.cleanse()` is mutator method,
+        // It returns the invalid orders now removed from `this.orders`
+        this.voidedOrders = Orders.cleanse(this.orders);
     }
 
 }

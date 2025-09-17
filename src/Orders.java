@@ -4,18 +4,6 @@ import java.util.Collection;
 public abstract class Orders {
 
 
-    public static Collection<Order> cleanse(Collection<Order> orders) {
-
-        Collection<Order> orders2 = new ArrayList<>();
-        for (Order order : orders) {
-            if (Orders.orderIsValid(order))
-                orders2.add(order);
-        }
-
-        return orders2;
-
-    }
-
     public static boolean orderIsValid(Order order) {
 
         // Does not check for appropriate-ness of convoys
@@ -75,7 +63,21 @@ public abstract class Orders {
 
     }
 
+    // MUTATOR
+    public static Collection<Order> cleanse(Collection<Order> orders) {
 
+        Collection<Order> invalidOrders = new ArrayList<>();
+        for (Order order : orders) {
+            if (!Orders.orderIsValid(order))
+                invalidOrders.add(order);
+        }
+
+        orders.removeAll(invalidOrders);
+        return invalidOrders;
+
+    }
+
+    // NOT A MUTATOR
     public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
 
         Collection<Order> newOrders = new ArrayList<>();
@@ -89,7 +91,7 @@ public abstract class Orders {
     }
 
 
-    public static Order unitAtPosition(Province pos, Collection<Order> orders) {
+    public static Order locateUnitAtPosition(Province pos, Collection<Order> orders) {
 
         for (Order order : orders) {
             if (order.pos0 == pos)
@@ -100,7 +102,7 @@ public abstract class Orders {
 
     }
 
-    public static Collection<Order> unitsMovingToPosition(Province pos, Collection<Order> orders) {
+    public static Collection<Order> locateUnitsMovingToPosition(Province pos, Collection<Order> orders) {
 
         Collection<Order> ordersOut = new ArrayList<>();
 
@@ -127,6 +129,19 @@ public abstract class Orders {
             if (order2.equals(order) || order2.orderType != OrderType.MOVE)
                 continue;
             if (order2.pos1 == order.pos0 && order2.pos0 == order.pos1)
+                return order;
+        }
+
+        return null;
+
+    }
+
+    public static Order locateMoveFromConvoy(Order convoyOrder, Collection<Order> orders) {
+
+        for (Order order : orders) {
+            if (order.equals(convoyOrder) || order.orderType != OrderType.MOVE)
+                continue;
+            if (order.pos0 == convoyOrder.pos1 && order.pos1 == convoyOrder.pos2)
                 return order;
         }
 
