@@ -13,7 +13,7 @@ public class StrictJudge extends Judge {
     }
 
     protected void cleanseOrders() {
-        // `Orders.cleanse()` is mutator method,
+        // `Orders.cleanse()` is a mutator method,
         // It returns the invalid orders now removed from `this.orders`
         this.voidedOrders = Orders.cleanse(this.orders);
     }
