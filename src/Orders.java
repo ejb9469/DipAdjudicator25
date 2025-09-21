@@ -123,7 +123,7 @@ public abstract class Orders {
     public static Order locateHeadToHead(Order order, Collection<Order> orders) {
 
         if (order.orderType != OrderType.MOVE)
-            throw new IllegalStateException(String.format("`locateHeadToHead()` called on non-move Order: %s", order));
+            throw new IllegalArgumentException(String.format("`locateHeadToHead()` called on non-move Order: %s", order));
 
         for (Order order2 : orders) {
             if (order2.equals(order) || order2.orderType != OrderType.MOVE)
@@ -136,13 +136,28 @@ public abstract class Orders {
 
     }
 
-    public static Order locateMoveFromConvoy(Order convoyOrder, Collection<Order> orders) {
+    public static Order locateCorresponding(Order supportOrConvoyOrder, Collection<Order> orders) {
 
-        for (Order order : orders) {
-            if (order.equals(convoyOrder) || order.orderType != OrderType.MOVE)
-                continue;
-            if (order.pos0 == convoyOrder.pos1 && order.pos1 == convoyOrder.pos2)
-                return order;
+        if (supportOrConvoyOrder.orderType != OrderType.SUPPORT &&
+            supportOrConvoyOrder.orderType != OrderType.CONVOY) {
+            throw new IllegalArgumentException(String.format("`locateCorresponding()` called on non-support-or-convoy Order: %s", supportOrConvoyOrder));
+        }
+
+        // Handle Support-Holds separately
+        if (supportOrConvoyOrder.orderType == OrderType.SUPPORT && supportOrConvoyOrder.pos2 == null) {
+            for (Order order : orders) {
+                if (order.equals(supportOrConvoyOrder) || order.orderType == OrderType.MOVE)
+                    continue;
+                if (order.pos0 == supportOrConvoyOrder.pos1)
+                    return order;
+            }
+        } else {  // Handle Support-Moves and Convoys
+            for (Order order : orders) {
+                if (order.equals(supportOrConvoyOrder) || order.orderType != OrderType.MOVE)
+                    continue;
+                if (order.pos0 == supportOrConvoyOrder.pos1 && order.pos1 == supportOrConvoyOrder.pos2)
+                    return order;
+            }
         }
 
         return null;

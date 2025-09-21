@@ -5,6 +5,7 @@ public class Order {
     public OrderType orderType;
     public Province pos0, pos1, pos2;
 
+    // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
     public boolean dislodged = false;
 
     public boolean resolved;

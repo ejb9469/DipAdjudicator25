@@ -122,6 +122,10 @@ public class Judge {
         // Handle SUPPORT orders
         else if (order.orderType == OrderType.SUPPORT) {
 
+            // Supports will fail without a corresponding order
+            if (Orders.locateCorresponding(order, orders) == null)
+                return false;
+
             for (Order order2 : orders) {
 
                 if (order2.equals(order) || order2.orderType != OrderType.MOVE)
@@ -147,17 +151,22 @@ public class Judge {
         // Handle CONVOYS
         else if (order.orderType == OrderType.CONVOY) {
 
+            // Convoys will fail without a corresponding order
+            if (Orders.locateCorresponding(order, orders) == null)
+                return false;
+
             Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, orders);
             for (Order assailant : assailants) {
                 if (assailant.equals(order)) continue;
                 if (resolve(assailant, !optimistic)) {
 
-                    Order matchingMoveOrder = Orders.locateMoveFromConvoy(order, this.orders);
+                    Order matchingMoveOrder = Orders.locateCorresponding(order, this.orders);
                     if (matchingMoveOrder != null)
                         if (!matchingMoveOrder.pos0.isAdjacentTo(matchingMoveOrder.pos1)) {
                             // There exists a Move to & from non-adjacent squares that matches this convoy's specifications,
                             // and this convoy is now dislodged
                             // Therefore, the move cannot possibly go through
+                            // This is a 'shortcut' and violates the division of responsibility btwn. `adjudicate()` and `resolve()`
                             matchingMoveOrder.resolved = true;
                             matchingMoveOrder.verdict = false;
                         }

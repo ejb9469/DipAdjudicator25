@@ -67,14 +67,14 @@ public class TestCaseManager {
         //example();
         // See `example_main.txt` for contents of `example()`
 
-        System.out.println("----------------------------------------\n");
+        System.out.println("\n----------------------------------------");
 
         TestCaseManager manager = new TestCaseManager(true);
         DATCFileParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
 
         List<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(testCases);
-        System.out.println("\n");
+        System.out.println("----------------------------------------\n\n");
         for (TestCase testCase : manager.testCases)
             testCase.eval(manager.prints());
 
@@ -82,8 +82,6 @@ public class TestCaseManager {
         System.out.printf("TOTAL SCORE: [%d/%d]\n", manager.score(), manager.size());
 
     }
-
-
 
 
 }
