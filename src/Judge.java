@@ -37,7 +37,7 @@ public class Judge {
 
         // 2nd run
         for (Order order : orders)
-            order.verdict = resolve(order, true);
+            resolve(order, true);
 
     }
 
@@ -60,27 +60,36 @@ public class Judge {
                 // Calculate opponent's DEFEND STRENGTH
                 int opponentDefendStrength = calculateDefendStrength(headToHead, optimistic, orders);
 
-                if (attackStrength > opponentDefendStrength) {
+                Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
 
-                    Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
+                if (attackStrength > opponentDefendStrength) {
 
                     // Move is completely unopposed
                     if (otherOpponents.size() <= 1)
                         return true;
 
                     // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
-                    // `champion` will be true if our Move order is the greatest (with no ties)
-                    boolean champion = true;
-                    for (Order order2 : otherOpponents) {
-                        int opponentPreventStrength = calculatePreventStrength(order2, !optimistic, orders);
-                        if (opponentPreventStrength >= attackStrength) {
-                            champion = false;
-                            break;
-                        }
-                    }
-                    return champion;
+                    // returns true if our Move order is the greatest (with no ties)
+                    return champion(order, attackStrength, optimistic, otherOpponents);
 
-                } else {  // Lost to opponent mover, return false
+                } else if (Orders.adjacentMatchingConvoyFleetExists(order, orders) &&
+                        Orders.adjacentMatchingConvoyFleetExists(headToHead, orders)) {
+                    // Lost to opponent mover, the move will fail unless there are Convoy-Swap hijinx
+
+                    // Test for Convoy-Swaps (very specific edge case)
+                    // Convoy-Swaps will succeed if-and-only-if:
+                    //      1) 'This' move is successful if re-evaluated as a NON-HEAD-TO-HEAD Battle; i.e. ...
+                    //              ... a) The ATTACK STRENGTH is greater than the Hold Strength of the area...
+                    //                  b) ...and the Prevent Strength of all movers competing for the same area
+                    //      2) The 'other' move is also successful -- i.e. it also satisfies condition #1
+                    boolean otherMoveSuccessful = resolve(headToHead, optimistic);
+                    int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
+
+                    return otherMoveSuccessful &&
+                            (attackStrength > destHoldStrength) &&
+                            champion(order, attackStrength, optimistic, otherOpponents);
+
+                } else {  // Cannot overwhelm nor swap with the Head-to-Head adversary
                     return false;
                 }
 
@@ -94,22 +103,13 @@ public class Judge {
                 // Calculate destination's HOLD STRENGTH
                 int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
 
+                Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
+
                 if (attackStrength > destHoldStrength) {
 
-                    Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(order.pos1, orders);
-
                     // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
-                    // `champion` will be true if our Move order is the greatest (with no ties)
-                    boolean champion = true;
-                    for (Order order2 : otherOpponents) {
-                        if (order2.equals(order)) continue;
-                        int opponentPreventStrength = calculatePreventStrength(order2, !optimistic, orders);
-                        if (opponentPreventStrength >= attackStrength) {
-                            champion = false;
-                            break;
-                        }
-                    }
-                    return champion;
+                    // returns true if our Move order is the greatest (with no ties)
+                    return champion(order, attackStrength, optimistic, otherOpponents);
 
                 } else {  // Lost on hold strength, return false
                     return false;
@@ -156,7 +156,7 @@ public class Judge {
                     if (matchingMoveOrder != null)
                         if (!matchingMoveOrder.pos0.isAdjacentTo(matchingMoveOrder.pos1)) {
                             // There exists a Move to & from non-adjacent squares that matches this convoy's specifications,
-                            // and this convoy is now dislodged.
+                            // and this convoy is now dislodged
                             // Therefore, the move cannot possibly go through
                             matchingMoveOrder.resolved = true;
                             matchingMoveOrder.verdict = false;
@@ -204,6 +204,7 @@ public class Judge {
         throw new IllegalStateException("Impossible OrderType");
 
     }
+
 
     private boolean resolve(Order order, boolean optimistic) {
 
@@ -332,7 +333,7 @@ public class Judge {
                 Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders));
 
         if (!treatAsConvoyingArmy) {
-            return true;  // Valid path, and no convoying required
+            return moveOrder.pos0.isAdjacentTo(moveOrder.pos1);  // Try land route, no convoys detected
         } else {
 
             // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
@@ -370,14 +371,15 @@ public class Judge {
                         convoyOrders.removeAll(unsuccessfulConvoys);
                 }
 
-                // No convoy path available
-                return false;
+                // No convoy path available -- only the land route
+                return moveOrder.pos0.isAdjacentTo(moveOrder.pos1);
 
             }
 
         }
 
     }
+
 
     private int tallySuccessfulSupports(Order order, boolean optimistic, Collection<Order> orders) {
 
@@ -500,6 +502,25 @@ public class Judge {
         }
 
         return 1+tallySuccessfulSupports(order, optimistic, orders);
+
+    }
+
+    private boolean champion(Order moveOrder, int attackStrength, boolean optimistic, Collection<Order> opponents) {
+
+        // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
+        // `champion` will be true if our Move order is the greatest (with no ties)
+        boolean champion = true;
+
+        for (Order order2 : opponents) {
+            if (order2.equals(moveOrder)) continue;
+            int opponentPreventStrength = calculatePreventStrength(order2, !optimistic, orders);
+            if (opponentPreventStrength >= attackStrength) {
+                champion = false;
+                break;
+            }
+        }
+
+        return champion;
 
     }
 

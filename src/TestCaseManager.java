@@ -65,7 +65,7 @@ public class TestCaseManager {
     public static void main(String[] args) {
 
         //example();
-        // See `old_TestCaseManager_mainfunc.txt` for contents of `example()`
+        // See `example_main.txt` for contents of `example()`
 
         System.out.println("----------------------------------------\n");
 
