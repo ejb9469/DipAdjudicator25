@@ -1,5 +1,12 @@
 import java.util.*;
 
+
+/**
+ * The `Judge` class holds a Collection of Orders, and contains the Adjudication & Resolution logic required to definitively process them all in sequence (see `Judge.judge(...)`).<br><br>
+ *
+ * Utilizes a duplex recursive algorithm, where `resolve(...)` handles dependency logic i.e. <i>"resolution via deduction"</i>,
+ * and `adjudicate(...)` handles board logic i.e. <i>"resolution via force"</i>
+ */
 public class Judge {
 
     // The adjudication program needs to handle the following situations:
@@ -29,6 +36,18 @@ public class Judge {
     }
 
 
+    /**
+     * Definitively resolves the collection of Orders `orders`.<br><br>
+     *
+     * Acquires Orders' resolution 'verdicts' by calling top-level `resolve(...)` twice per Order:<br>
+     *      1st Mass-Resolve: sets each `order.verdict` to the output of the call `resolve(order, optimistic=true)`<br>
+     *      2nd Mass-Resolve: does not directly set `order.verdict`, but still calls `resolve(order, optimistic=true)` for each order
+     *
+     * @postcondition Every order in `orders` is definitively resolved and has a verdict<br>
+     *                (This should be enough information to deduce dislodgement status!)
+     *
+     * @author Evan B
+     */
     public void judge() {
 
         // 1st run
@@ -41,7 +60,19 @@ public class Judge {
 
     }
 
-
+    /**
+     * Performs the necessary adjudication equations to resolve an Order<br><br>
+     *
+     * Does not know anything about Order states;<br>
+     * Instead, calls `resolve(order2, ...)` to determine whether an Order succeeds or fails.<br>
+     * These calls may return guess-based results, but this is of no concern to the `adjudicate` function.
+     *
+     * @param order Order to adjudicate
+     * @param optimistic Caller's `optimistic` bool -- which `adjudicate` may sometimes flip (for "opponents") in subsequent calls
+     * @return True if `order` is logistically successful, potentially based on `resolve(...)` guesswork -- false otherwise
+     *
+     * @author Evan B
+     */
     private boolean adjudicate(Order order, boolean optimistic) {
 
         // Handle MOVE orders
@@ -215,6 +246,22 @@ public class Judge {
     }
 
 
+    /**
+     * Resolves an Order based on a (possibly circular) dependency chain, updating state information along the way.<br>
+     * Only returns the 'best guess'; return values of `resolve` are not definitive on their own.<br><br>
+     *
+     * Based on preexisting Order state information (`order.resolved` && `order.verdict`) and optimistic/pessimistic heuristic.<br>
+     * Does not know anything about adjudication equations/logic;<br>
+     * Instead, calls `adjudicate(order, ...)` 1-2 times per Order to determine adjudication results.<br>
+     * These calls may, in turn, call `resolve(order2, ...)` to determine the status of dependent orders.
+     *
+     * @param order Order to resolve
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `order`
+     * @return Best guess as to the verdict of `order`
+     *
+     * @author Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>, <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)
+     * @author revised by Evan B
+     */
     private boolean resolve(Order order, boolean optimistic) {
 
         if (order.resolved)
@@ -297,6 +344,14 @@ public class Judge {
 
     }
 
+    /**
+     * Subroutine of `resolve(...)`, handles cyclical Order dependencies<br><br>
+     *
+     * These dependencies may either be comprised of all Move Orders, in which case, all Orders are forced through as `resolved = true` and `verdict = true`,<br>
+     * ... OR there are Convoy orders present in the chain, in which case, call the Szykman Rule (force all paradoxical Convoys to hold) subroutine.
+     *
+     * @param cyclicalOrders List of cyclical Order dependencies
+     */
     private void backupRule(List<Order> cyclicalOrders) {
 
         boolean areAllMovers = true;
@@ -318,6 +373,12 @@ public class Judge {
 
     }
 
+    /**
+     * Subroutine of `backupRule(...)`, handles paradoxical Convoy situations by applying the Szykman Rule<br><br>
+     * Szykman Rule definition: "All Convoy orders in the paradoxical convoy situation are forced to hold"
+     *
+     * @param cyclicalOrders List of cyclical Order dependencies
+     */
     private void szykmanRule(List<Order> cyclicalOrders) {
 
         for (Order order : cyclicalOrders) {
@@ -333,6 +394,20 @@ public class Judge {
     }
 
 
+    /**
+     * Adjudication subroutine which returns true if a given Move Order can successfully reach its destination -- i.e. "has a successful path" -- false otherwise<br><br>
+     *
+     * A path is successful if:<br>
+     *      1) The Order is valid<br>
+     *      2A) <i>EITHER...</i> The unit is adjacent to its destination, there are no matching Convoy(s), and the unit can, theoretically, move to its destination >> [<b>LAND ROUTE</b>]<br>
+     *      2B)     <i>OR...</i> The unit is an army, and there exist 1+ matching Convoy(s) / matching series(') of uninterrupted (successful) Convoys >> [<b>WATER ROUTE</b>]<br>
+     *      2C)     <i>OR...</i> The unit is adjacent to its destination, is an army, there exist Convoy(s) / ...(ditto), but the 'Water Route' is NOT successful >> [<b>LAND ROUTE</b>]
+     *
+     * @param moveOrder Move Order whose path to test
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `moveOrder`
+     * @param orders Collection of all Orders to test against
+     * @return Whether `moveOrder`'s path is successful; `moveOrder` touches its destination
+     */
     private boolean pathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
         if (!Orders.orderIsValid(moveOrder))
@@ -390,6 +465,16 @@ public class Judge {
     }
 
 
+    /**
+     * Count & return the # of successful Support Orders attributed to a given Order<br><br>
+     *
+     * Support Orders are adjudicated as unsuccessful if they are 'cut' -- i.e. there exists a Move Order with a successful path that has 'touched' the support
+     *
+     * @param order Order whose support(s) to tally
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `order`
+     * @param orders Collection of Orders to search
+     * @return # of successful Support Orders in `orders` attributed to `order`
+     */
     private int tallySuccessfulSupports(Order order, boolean optimistic, Collection<Order> orders) {
 
         int supports = 0;
@@ -430,6 +515,18 @@ public class Judge {
 
     }
 
+    /**
+     * Count & return the # of successful Support Orders attributed to a given Order that are NOT coming from a given Nation<br><br>
+     *
+     * Identical to `tallySuccessfulSupports()`, but will not tally any supports originating from the Nation `forbiddenOwner`<br>
+     * The most common use for this function is to ignore a Nation's own support for the purpose of avoiding self-dislodgement
+     *
+     * @param order Order whose support(s) to tally
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `order`
+     * @param forbiddenOwner Nation whose Support Orders to ignore
+     * @param orders Collection of Orders to search
+     * @return # of successful Support Orders in `orders` attributed to `order`, which are not coming from `forbiddenOwner`
+     */
     private int tallySuccessfulSupportsForeign(Order order, boolean optimistic, Nation forbiddenOwner, Collection<Order> orders) {
 
         int supports = 0;
@@ -472,48 +569,16 @@ public class Judge {
 
     }
 
-    private int calculateAttackStrength(Order order, boolean optimistic, boolean headToHead, Collection<Order> orders) {
-
-        if (!pathSuccessful(order, optimistic, orders))
-            return 0;
-
-        if (Orders.locateUnitAtPosition(order.pos1, orders) == null)
-            return 1+tallySuccessfulSupports(order, optimistic, orders);
-
-        Order destOrder = Orders.locateUnitAtPosition(order.pos1, orders);
-        if (!headToHead) {
-            if (resolve(destOrder, optimistic)) {
-                return 1+tallySuccessfulSupports(order, optimistic, orders);
-            } else if (destOrder.owner == order.owner) {
-                return 0;
-            }
-        }
-
-        return 1+tallySuccessfulSupportsForeign(order, optimistic, destOrder.owner, orders);
-
-    }
-
-    private int calculateDefendStrength(Order order, boolean optimistic, Collection<Order> orders) {
-
-        return 1+tallySuccessfulSupports(order, optimistic, orders);
-
-    }
-
-    private int calculatePreventStrength(Order order, boolean optimistic, Collection<Order> orders) {
-
-        if (!pathSuccessful(order, optimistic, orders))
-            return 0;
-
-        Order headToHead = Orders.locateHeadToHead(order, orders);
-        if (headToHead != null) {
-            if (resolve(headToHead, optimistic))
-                return 0;
-        }
-
-        return 1+tallySuccessfulSupports(order, optimistic, orders);
-
-    }
-
+    /**
+     * Calculate the <i>Prevent Strength</i> of all Movers going to the same destination as a given Move Order.<br>
+     * Return whether the Move Order's <i>Attack Strength</i> is greater than the Prevent Strength of all other Movers to the same area ("opponents")
+     *
+     * @param moveOrder Move Order whose 'champion status' to determine
+     * @param attackStrength Attack Strength of `moveOrder`: passed by caller, not re-calculated within
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `moveOrder` and its opponents (inverted for opponents)
+     * @param opponents Collection of opposing Movers ("opponents")
+     * @return True if the Attack Strength of `moveOrder` is greater than the Prevent Strengths of all Move Orders in Collection `opponents` -- false otherwise
+     */
     private boolean champion(Order moveOrder, int attackStrength, boolean optimistic, Collection<Order> opponents) {
 
         // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
@@ -533,6 +598,101 @@ public class Judge {
 
     }
 
+
+    /**
+     * Calculate a Move Order's <i>Attack Strength</i><br><br>
+     *
+     * Attack Strength is defined as the strength (of a Move Order) to attack & conquer its destination Province
+     *
+     * @param moveOrder Move Order whose Attack Strength to calculate
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `moveOrder` and its opponents (inverted for opponents)
+     * @param headToHead Whether `moveOrder` is engaged in a Head-to-Head Battle (with another Move Order)
+     * @param orders Collection of Orders to search
+     * @return Attack Strength of `moveOrder`
+     */
+    private int calculateAttackStrength(Order moveOrder, boolean optimistic, boolean headToHead, Collection<Order> orders) {
+
+        if (moveOrder.orderType != OrderType.MOVE)
+            throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculateAttackStrength(...)`: %s", moveOrder));
+
+        if (!pathSuccessful(moveOrder, optimistic, orders))
+            return 0;
+
+        if (Orders.locateUnitAtPosition(moveOrder.pos1, orders) == null)
+            return 1+tallySuccessfulSupports(moveOrder, !optimistic, orders);
+
+        Order destOrder = Orders.locateUnitAtPosition(moveOrder.pos1, orders);
+        if (!headToHead) {
+            if (resolve(destOrder, optimistic)) {
+                return 1+tallySuccessfulSupports(moveOrder, !optimistic, orders);
+            } else if (destOrder.owner == moveOrder.owner) {
+                return 0;
+            }
+        }
+
+        return 1+tallySuccessfulSupportsForeign(moveOrder, optimistic, destOrder.owner, orders);
+
+    }
+
+    /**
+     * Calculate a Head-to-Head Move Order's <i>Defend Strength</i><br><br>
+     *
+     * Defend Strength is defined as the strength of a Move Order engaged in a Head-to-Head Battle (with another Mover),
+     * which prevents the opposing Mover from succeeding.
+     *
+     * @param headToHeadMoveOrder Move Order whose Defend Strength to calculate
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `headToHeadMoveOrder` and its opponents (inverted for opponents)
+     * @param orders Collection of Orders to search
+     * @return Defend Strength of `headToHeadMoveOrder`
+     */
+    private int calculateDefendStrength(Order headToHeadMoveOrder, boolean optimistic, Collection<Order> orders) {
+
+        if (headToHeadMoveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Head-to-Head
+            throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculateDefendStrength(...)`: %s", headToHeadMoveOrder));
+
+        return 1+tallySuccessfulSupports(headToHeadMoveOrder, !optimistic, orders);
+
+    }
+
+    /**
+     * Calculate a Move Order's <i>Prevent Strength</i><br><br>
+     *
+     * Prevent Strength is defined as the strength (of a Move Order) preventing another Move Order (NOT engaged in Head-to-Head) from succeeding
+     *
+     * @param moveOrder Move Order whose Prevent Strength to calculate
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `moveOrder` and its opponents (inverted for opponents)
+     * @param orders Collection of Orders to search
+     * @return Prevent Strength of `moveOrder`
+     */
+    private int calculatePreventStrength(Order moveOrder, boolean optimistic, Collection<Order> orders) {
+
+        if (moveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Non-Head-to-Head
+            throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculatePreventStrength(...)`: %s", moveOrder));
+
+        if (!pathSuccessful(moveOrder, optimistic, orders))
+            return 0;
+
+        Order headToHead = Orders.locateHeadToHead(moveOrder, orders);
+        if (headToHead != null) {
+            if (resolve(headToHead, !optimistic))
+                return 0;
+        }
+
+        return 1+tallySuccessfulSupports(moveOrder, optimistic, orders);
+
+    }
+
+    /**
+     * Calculate a Province's <i>Hold Strength</i><br><br>
+     *
+     * Hold Strength is defined as the strength (of a Province) preventing other [Move] Orders from moving to it<br>
+     * If the area is empty, the value is 0.
+     *
+     * @param pos Province whose Hold Strength to calculate
+     * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of Support-to-Hold Orders corresponding to Province `pos`
+     * @param orders Collection of Orders to search
+     * @return Hold Strength of Province `pos`
+     */
     private int calculateHoldStrength(Province pos, boolean optimistic, Collection<Order> orders) {
 
         Order occupant = Orders.locateUnitAtPosition(pos, orders);
