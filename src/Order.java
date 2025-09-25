@@ -1,5 +1,14 @@
+/**
+ * The `Order` class is a public-facing class representing a Diplomacy order 'struct'.<br><br>
+ *
+ * In addition to the relevant data fields, the `Order` class also contains adjudication-related metadata fields --
+ * (i.e. `<i>resolved</i>`, `<i>verdict</i>`, & `<i>visited</i>`) -- and a 'dangling' field <i>bool</i> `<i>dislodged</i>` for general-purpose.
+ */
 public class Order {
 
+    // TODO: Reformat? from class -> record (introduced Java 16; 2021)
+
+    // Core fields
     public Nation owner;
     public UnitType unitType;
     public OrderType orderType;
@@ -8,6 +17,7 @@ public class Order {
     // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
     public boolean dislodged = false;
 
+    // Metadata fields
     public boolean resolved;
     public boolean verdict;
     public boolean visited;
@@ -43,20 +53,33 @@ public class Order {
     }
 
 
+    /**
+     * Generates & returns a String representation of this Order's unit components (i.e. "no orders")
+     *
+     * @return String representation of this Order's unit components
+     */
     public String unitToString() {
-
         String output = owner.getPrefix() + " ";
         output += unitType.name().charAt(0) + " ";
         output += pos0.name();
         return output;
-
     }
 
+    /**
+     * Formats & returns a String representation of this Order's metadata fields
+     *
+     * @return String representation of this Order's metadata fields
+     */
     public String metaToString() {
         return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
 
-
+    /**
+     * <b>Overridden</b> `toString()` method; generates & returns a String representation of this Order in
+     * "<a href="https://www.backstabbr.com/"><i>Backstabbr</a> notation</i>".
+     *
+     * @return Implicit String representation of this Order in Backstabbr notation
+     */
     @Override
     public String toString() {
 
@@ -86,6 +109,15 @@ public class Order {
     }
 
 
+    /**
+     * <b>Overridden</b> `equals()` method; compares Object equality with another given Object<br><br>
+     *
+     * Will return the equality of the core Order fields & `<i>dislodged</i>`, while ignoring all metadata fields.
+     *
+     * @param other   the reference object with which to compare.
+     * @return Object equality of this and `other`
+     */
+    @Override
     public boolean equals(Object other) {
 
         if (!(other instanceof Order))
@@ -104,6 +136,5 @@ public class Order {
                 this.dislodged == order2.dislodged);
 
     }
-
 
 }

@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class TestCaseManager {
@@ -70,9 +71,9 @@ public class TestCaseManager {
         System.out.println("\n----------------------------------------");
 
         TestCaseManager manager = new TestCaseManager(true);
-        DATCFileParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
+        FileTestCaseParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
 
-        List<TestCase> testCases = fileParser.parseMany();
+        Collection<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(testCases);
         System.out.println("----------------------------------------\n\n");
         for (TestCase testCase : manager.testCases)

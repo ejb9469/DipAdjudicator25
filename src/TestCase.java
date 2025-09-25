@@ -4,8 +4,8 @@ public class TestCase {
 
     public static final String TESTCASE_PREFIX = "TEST CASE - ";
 
-    private final String        name;
     private final List<Order>   orders;
+    private String              name;
 
     private List<boolean[]>     expectedFields = null;
     private List<boolean[]>     actualFields = null;
@@ -109,6 +109,9 @@ public class TestCase {
 
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public String getName() {
         return name;

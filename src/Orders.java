@@ -1,13 +1,20 @@
 import java.util.ArrayList;
 import java.util.Collection;
 
+/**
+ * Abstract class of static utility functions re: Orders and Collections of Orders
+ */
 public abstract class Orders {
 
-
+    /**
+     * Checks the validity of an Order
+     * @param order Order to check
+     * @return True if `order` is valid, false otherwise
+     */
     public static boolean orderIsValid(Order order) {
 
-        // Does not check for appropriate-ness of convoys
-
+        // Does not check for appropriate-ness of Convoys
+        // Does not check for adjacency of Moves
         switch (order.orderType) {
 
             case MOVE -> {
@@ -63,6 +70,11 @@ public abstract class Orders {
 
     }
 
+    /**
+     * Removes all invalid Orders from a given Collection of Orders, and returns the Orders removed from the Collection
+     * @param orders Collection of Orders
+     * @return A Collection of the Orders removed from `orders`
+     */
     // MUTATOR
     public static Collection<Order> cleanse(Collection<Order> orders) {
 
@@ -77,6 +89,12 @@ public abstract class Orders {
 
     }
 
+    /**
+     * Searches for Orders of a given OrderType, returns results
+     * @param orderType OrderType to prune for
+     * @param orders Collection of Orders to search
+     * @return New Collection of Orders: results of pruning `orders` for Orders of `orderType`
+     */
     // NOT A MUTATOR
     public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
 
@@ -91,6 +109,12 @@ public abstract class Orders {
     }
 
 
+    /**
+     * Searches for & returns the first Order at a given Position
+     * @param pos Position to search for
+     * @param orders Collection of Orders to search
+     * @return First Order found at `pos` in `orders`
+     */
     public static Order locateUnitAtPosition(Province pos, Collection<Order> orders) {
 
         for (Order order : orders) {
@@ -102,6 +126,12 @@ public abstract class Orders {
 
     }
 
+    /**
+     * Searches for & returns a Collection of Movers to a given Position
+     * @param pos Position to search for
+     * @param orders Collection of Orders to search
+     * @return Collection of Movers to `pos` in `orders`
+     */
     public static Collection<Order> locateUnitsMovingToPosition(Province pos, Collection<Order> orders) {
 
         Collection<Order> ordersOut = new ArrayList<>();
@@ -120,22 +150,34 @@ public abstract class Orders {
 
     }
 
-    public static Order locateHeadToHead(Order order, Collection<Order> orders) {
+    /**
+     * Searches for & returns the 'other' Order participating in the same Head-to-Head Battle as a given Move Order
+     * @param moveOrder Move Order
+     * @param orders Collection of Orders to search
+     * @return `moveOrder`'s Head-to-Head "opponent"
+     */
+    public static Order locateHeadToHead(Order moveOrder, Collection<Order> orders) {
 
-        if (order.orderType != OrderType.MOVE)
-            throw new IllegalArgumentException(String.format("`locateHeadToHead()` called on non-move Order: %s", order));
+        if (moveOrder.orderType != OrderType.MOVE)
+            throw new IllegalArgumentException(String.format("`locateHeadToHead()` called on non-move Order: %s", moveOrder));
 
         for (Order order2 : orders) {
-            if (order2.equals(order) || order2.orderType != OrderType.MOVE)
+            if (order2.equals(moveOrder) || order2.orderType != OrderType.MOVE)
                 continue;
-            if (order2.pos1 == order.pos0 && order2.pos0 == order.pos1)
-                return order;
+            if (order2.pos1 == moveOrder.pos0 && order2.pos0 == moveOrder.pos1)
+                return moveOrder;
         }
 
         return null;
 
     }
 
+    /**
+     * Searches for & returns the Order corresponding to a given Support / Convoy Order
+     * @param supportOrConvoyOrder Support or Convoy Order
+     * @param orders Collection of Orders to search
+     * @return Order matching the specifications of `supportOrConvoyOrder`
+     */
     public static Order locateCorresponding(Order supportOrConvoyOrder, Collection<Order> orders) {
 
         if (supportOrConvoyOrder.orderType != OrderType.SUPPORT &&
@@ -164,19 +206,24 @@ public abstract class Orders {
 
     }
 
-
-    public static boolean adjacentMatchingConvoyFleetExists(Order order, Collection<Order> orders) {
+    /**
+     * Searches for a Convoy Order adjacent to & corresponding to a given Move Order, returns true if found
+     * @param moveOrder Move Order
+     * @param orders Collection of Orders to search
+     * @return True if found adjacent & correspondent Convoy fleet to `moveOrder`, false otherwise
+     */
+    public static boolean adjacentMatchingConvoyFleetExists(Order moveOrder, Collection<Order> orders) {
 
         for (Order order2 : orders) {
 
-            if (order2.equals(order))
+            if (order2.equals(moveOrder))
                 continue;
 
-            if (order2.pos0.isAdjacentTo(order.pos0) &&
+            if (order2.pos0.isAdjacentTo(moveOrder.pos0) &&
                     order2.orderType == OrderType.CONVOY &&
                     order2.unitType == UnitType.FLEET &&
                     order2.pos0.isWater()) {
-                if (order2.pos1 == order.pos0 && order2.pos2 == order.pos1)
+                if (order2.pos1 == moveOrder.pos0 && order2.pos2 == moveOrder.pos1)
                     return true;
             }
 

@@ -3,8 +3,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Parses the moves of the format found at the DATC page hosted on WebDip:
- * https://webdiplomacy.net/doc/DATC_v3_0.html
+ * Parses Orders of the format found at the
+ * <a href="https://webdiplomacy.net/doc/DATC_v3_0.html">DATC page</a> hosted on WebDip
  */
 public class DATCParser implements TestCaseParser {
 

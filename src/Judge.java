@@ -1,8 +1,8 @@
 import java.util.*;
 
-
 /**
- * The `Judge` class holds a Collection of Orders, and contains the Adjudication & Resolution logic required to definitively process them all in sequence (see `Judge.judge(...)`).<br><br>
+ * The `Judge` class holds a Collection of Orders, and contains the Adjudication & Resolution logic required to definitively process them all in sequence:
+ * see `Judge.judge(...)`<br><br>
  *
  * Utilizes a duplex recursive algorithm, where `resolve(...)` handles dependency logic i.e. <i>"resolution via deduction"</i>,
  * and `adjudicate(...)` handles board logic i.e. <i>"resolution via force"</i>
@@ -14,37 +14,45 @@ public class Judge {
         // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
         // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
 
-    protected final List<Order> orders;
+    protected final Collection<Order> orders;
 
-
-    public Judge(List<Order> orders) {
-        this.orders = orders;
-    }
 
     public Judge() {
         this.orders = new ArrayList<>();
     }
 
+    public Judge(List<Order> orders) {
+        this.orders = orders;
+    }
 
-    private List<Order> cycle = new ArrayList<>();
-    private int         recursionHits = 0;
-    private boolean     uncertain = false;
 
-
-    public List<Order> getOrders() {
+    public Collection<Order> getOrders() {
         return orders;
     }
 
 
     /**
-     * Definitively resolves the collection of Orders `orders`.<br><br>
+     * <u>Global vars for the `resolve()` func:</u><br>
+     *      ~ <i>(List of Orders)</i> `<i><b>cycle</b></i>` contains the contents of a recursion cycle, if it exists (empty otherwise)<br>
+     *      ~ <i>int</i> `<i><b>recursionHits</b></i>` represents the cyclic dependency depth<br>
+     *      ~ <i>bool</i> `<i><b>uncertain</b></i>` is the "guessing variable" --
+     *          when true, indicates resolve() returns a result based on uncertain information
+     *          ... (i.e. is guessing)
+     */
+    private List<Order> cycle = new ArrayList<>();
+    private int         recursionHits = 0;
+    private boolean     uncertain = false;
+
+
+    /**
+     * <i><u>Definitively</u></i> resolves the Collection of Orders `orders`.<br><br>
      *
-     * Acquires Orders' resolution 'verdicts' by calling top-level `resolve(...)` twice per Order:<br>
-     *      1st Mass-Resolve: sets each `order.verdict` to the output of the call `resolve(order, optimistic=true)`<br>
-     *      2nd Mass-Resolve: does not directly set `order.verdict`, but still calls `resolve(order, optimistic=true)` for each order
+     * Acquires Orders' resolution 'verdicts' by calling top-level `resolve(...)` 2x per Order:<br>
+     *      ~ 1st Mass-Resolve: sets each `order.verdict` to the output of the call `resolve(order, optimistic=true)`<br>
+     *      ~ 2nd Mass-Resolve: does not directly set `order.verdict`, but still calls `resolve(order, optimistic=true)` for each order
      *
      * @postcondition Every order in `orders` is definitively resolved and has a verdict<br>
-     *                (This should be enough information to deduce dislodgement status!)
+     *                (Note: This should be enough information to infer dislodgement status)
      *
      * @author Evan B
      */
@@ -61,7 +69,7 @@ public class Judge {
     }
 
     /**
-     * Performs the necessary adjudication equations to resolve an Order<br><br>
+     * Performs the necessary adjudication equations to resolve an Order.<br><br>
      *
      * Does not know anything about Order states;<br>
      * Instead, calls `resolve(order2, ...)` to determine whether an Order succeeds or fails.<br>
@@ -247,19 +255,20 @@ public class Judge {
 
 
     /**
-     * Resolves an Order based on a (possibly circular) dependency chain, updating state information along the way.<br>
-     * Only returns the 'best guess'; return values of `resolve` are not definitive on their own.<br><br>
+     * Resolves an Order based on a (possibly cyclic) dependency chain, updating state information along the way.<br>
+     * Return values of `resolve` are sometimes guess-based, thus any single run cannot be considered definitive by itself.<br><br>
      *
-     * Based on preexisting Order state information (`order.resolved` && `order.verdict`) and optimistic/pessimistic heuristic.<br>
-     * Does not know anything about adjudication equations/logic;<br>
+     * Determines result based on preexisting Order state information (`order.resolved` & `order.verdict`) and `optimistic`/pessimistic heuristic.<br>
+     * Does not know anything about the underlying adjudication equations;<br>
      * Instead, calls `adjudicate(order, ...)` 1-2 times per Order to determine adjudication results.<br>
      * These calls may, in turn, call `resolve(order2, ...)` to determine the status of dependent orders.
      *
      * @param order Order to resolve
      * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `order`
-     * @return Best guess as to the verdict of `order`
+     * @return 'Best guess' as to the verdict of `order`
      *
-     * @author Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>, <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)
+     * @author Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>,
+     * <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)
      * @author revised by Evan B
      */
     private boolean resolve(Order order, boolean optimistic) {
@@ -350,7 +359,7 @@ public class Judge {
      * These dependencies may either be comprised of all Move Orders, in which case, all Orders are forced through as `resolved = true` and `verdict = true`,<br>
      * ... OR there are Convoy orders present in the chain, in which case, call the Szykman Rule (force all paradoxical Convoys to hold) subroutine.
      *
-     * @param cyclicalOrders List of cyclical Order dependencies
+     * @param cyclicalOrders List of cyclic Order dependencies
      */
     private void backupRule(List<Order> cyclicalOrders) {
 
@@ -375,9 +384,10 @@ public class Judge {
 
     /**
      * Subroutine of `backupRule(...)`, handles paradoxical Convoy situations by applying the Szykman Rule<br><br>
+     *
      * Szykman Rule definition: "All Convoy orders in the paradoxical convoy situation are forced to hold"
      *
-     * @param cyclicalOrders List of cyclical Order dependencies
+     * @param cyclicalOrders List of cyclic Order dependencies
      */
     private void szykmanRule(List<Order> cyclicalOrders) {
 
@@ -397,11 +407,11 @@ public class Judge {
     /**
      * Adjudication subroutine which returns true if a given Move Order can successfully reach its destination -- i.e. "has a successful path" -- false otherwise<br><br>
      *
-     * A path is successful if:<br>
-     *      1) The Order is valid<br>
-     *      2A) <i>EITHER...</i> The unit is adjacent to its destination, there are no matching Convoy(s), and the unit can, theoretically, move to its destination >> [<b>LAND ROUTE</b>]<br>
-     *      2B)     <i>OR...</i> The unit is an army, and there exist 1+ matching Convoy(s) / matching series(') of uninterrupted (successful) Convoys >> [<b>WATER ROUTE</b>]<br>
-     *      2C)     <i>OR...</i> The unit is adjacent to its destination, is an army, there exist Convoy(s) / ...(ditto), but the 'Water Route' is NOT successful >> [<b>LAND ROUTE</b>]
+     * A Move Order's PATH is successful if:<br>
+     *      ~ 1) The Order is valid, <i>AND...</i><br>
+     *      ~ 2A) <i>EITHER...</i> The unit is adjacent to its destination, there are no matching Convoy(s), and the unit can, theoretically, move to its destination >> [<b>LAND ROUTE</b>]<br>
+     *      ~ 2B)     <i>OR...</i> The unit is an army, and there exist 1+ matching Convoy(s) / matching series(') of uninterrupted (successful) Convoys >> [<b>WATER ROUTE</b>]<br>
+     *      ~ 2C)     <i>OR...</i> The unit is adjacent to its destination, is an army, there exist Convoy(s) / ...(ditto), but the 'Water Route' is NOT successful >> [<b>LAND ROUTE</b>]
      *
      * @param moveOrder Move Order whose path to test
      * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `moveOrder`

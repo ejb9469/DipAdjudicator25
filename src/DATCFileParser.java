@@ -5,16 +5,21 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-public class DATCFileParser extends DATCParser {
-
+/**
+  * Responsible for parsing Test Case files using the Order syntax found at the
+ * <a href="https://webdiplomacy.net/doc/DATC_v3_0.html">WebDip DATC page</a>
+ */
+public class DATCFileParser extends DATCParser implements FileTestCaseParser {
 
     public static final String TESTGAMES_DIR_PATH = "src/testgames/";
     public static final String TESTGAMES_SOLUTIONS_DIR_PATH = "src/testgames_solutions/";
+    public static final String TESTGAMES_FILE_EXT = "";  // Include the dot (unless an empty String)
 
-    public String dirPath;
-    public String solutionsDirPath;
+    public final String dirPath;
+    public final String solutionsDirPath;
 
 
     public DATCFileParser() {
@@ -71,6 +76,7 @@ public class DATCFileParser extends DATCParser {
             }
 
             TestCase testCase = super.parse(contents);
+            testCase.setName(path.substring(0, (path.length() - TESTGAMES_FILE_EXT.length()) ));
             testCase.setExpectedFields(this.parseSolution(solutionContents));
             return testCase;
 
@@ -97,6 +103,7 @@ public class DATCFileParser extends DATCParser {
                 encounteredGarbageLines++;
                 continue;
             }
+            // Warning: `Boolean.parseBoolean()` may return null (but will not throw an exception)
             verdicts[i - encounteredGarbageLines] = Boolean.parseBoolean(line.strip());
         }
 
@@ -104,7 +111,7 @@ public class DATCFileParser extends DATCParser {
 
     }
 
-    public List<TestCase> parseMany() {
+    public Collection<TestCase> parseMany() {
 
         if (this.dirPath.isBlank())
             return null;
@@ -133,6 +140,5 @@ public class DATCFileParser extends DATCParser {
         return testCases;
 
     }
-
 
 }
