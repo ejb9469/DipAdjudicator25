@@ -356,8 +356,8 @@ public class Judge {
     /**
      * Subroutine of `resolve(...)`, handles cyclical Order dependencies<br><br>
      *
-     * These dependencies may either be comprised of all Move Orders, in which case, all Orders are forced through as `resolved = true` and `verdict = true`,<br>
-     * ... OR there are Convoy orders present in the chain, in which case, call the Szykman Rule (force all paradoxical Convoys to hold) subroutine.
+     * These dependencies may EITHER be comprised of all Move Orders, in which case, all Orders are forced through as `resolved = true` and `verdict = true`,<br>
+     * ... OR there are Convoy orders present in the chain, in which case, call the Szykman Rule method / subroutine (force all paradoxical Convoys to hold).
      *
      * @param cyclicalOrders List of cyclic Order dependencies
      */
@@ -628,16 +628,17 @@ public class Judge {
         if (!pathSuccessful(moveOrder, optimistic, orders))
             return 0;
 
-        if (Orders.locateUnitAtPosition(moveOrder.pos1, orders) == null)
-            return 1+tallySuccessfulSupports(moveOrder, !optimistic, orders);
-
         Order destOrder = Orders.locateUnitAtPosition(moveOrder.pos1, orders);
-        if (!headToHead) {
-            if (resolve(destOrder, optimistic)) {
-                return 1+tallySuccessfulSupports(moveOrder, !optimistic, orders);
-            } else if (destOrder.owner == moveOrder.owner) {
+
+        if (destOrder == null)
+            return 1+tallySuccessfulSupports(moveOrder, optimistic, orders);
+
+        if (!headToHead && destOrder.orderType == OrderType.MOVE) {  // Non-Head-to-Head Battle
+            if (resolve(destOrder, optimistic))
+                return 1+tallySuccessfulSupports(moveOrder, optimistic, orders);
+            else if (destOrder.owner == moveOrder.owner)
                 return 0;
-            }
+            // else: below
         }
 
         return 1+tallySuccessfulSupportsForeign(moveOrder, optimistic, destOrder.owner, orders);
@@ -660,7 +661,7 @@ public class Judge {
         if (headToHeadMoveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Head-to-Head
             throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculateDefendStrength(...)`: %s", headToHeadMoveOrder));
 
-        return 1+tallySuccessfulSupports(headToHeadMoveOrder, !optimistic, orders);
+        return 1+tallySuccessfulSupports(headToHeadMoveOrder, optimistic, orders);
 
     }
 
@@ -684,7 +685,7 @@ public class Judge {
 
         Order headToHead = Orders.locateHeadToHead(moveOrder, orders);
         if (headToHead != null) {
-            if (resolve(headToHead, !optimistic))
+            if (resolve(headToHead, optimistic))
                 return 0;
         }
 
