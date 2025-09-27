@@ -21,7 +21,7 @@ public class Judge {
         this.orders = new ArrayList<>();
     }
 
-    public Judge(List<Order> orders) {
+    public Judge(Collection<Order> orders) {
         this.orders = orders;
     }
 
@@ -161,7 +161,7 @@ public class Judge {
         // Handle SUPPORT orders
         else if (order.orderType == OrderType.SUPPORT) {
 
-            // Supports will fail without a corresponding order
+            // SUPPORTS WILL FAIL WITHOUT A CORRESPONDING ORDER
             if (Orders.locateCorresponding(order, orders) == null)
                 return false;
 
@@ -190,7 +190,7 @@ public class Judge {
         // Handle CONVOYS
         else if (order.orderType == OrderType.CONVOY) {
 
-            // Convoys will fail without a corresponding order
+            // CONVOYS WILL FAIL WITHOUT A CORRESPONDING ORDER
             if (Orders.locateCorresponding(order, orders) == null)
                 return false;
 
@@ -490,13 +490,17 @@ public class Judge {
         int supports = 0;
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
 
+            // Invalid / illegal moves cannot receive support
+            if (!Orders.orderIsValid(order))
+                return 0;
+
             for (Order order2 : orders) {
 
-                // Invalid / illegal supports do not count
-                if (!Orders.orderIsValid(order))
+                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT)
                     continue;
 
-                if (order2.equals(order) || order2.orderType != OrderType.SUPPORT)
+                // Invalid / illegal supports do not count
+                if (!Orders.orderIsValid(order2))
                     continue;
 
                 if (order2.pos1 == order.pos0 && order2.pos2 == order.pos1) {
@@ -542,14 +546,18 @@ public class Judge {
         int supports = 0;
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
 
-            for (Order order2 : orders) {
+            // Invalid / illegal moves cannot receive support
+            if (!Orders.orderIsValid(order))
+                return 0;
 
-                // Invalid / illegal supports do not count
-                if (!Orders.orderIsValid(order))
-                    continue;
+            for (Order order2 : orders) {
 
                 if (order2.equals(order) || order2.orderType != OrderType.SUPPORT ||
                         order2.owner == forbiddenOwner)
+                    continue;
+
+                // Invalid / illegal supports do not count
+                if (!Orders.orderIsValid(order2))
                     continue;
 
                 if (order2.pos1 == order.pos0 && order2.pos2 == order.pos1) {
@@ -658,7 +666,8 @@ public class Judge {
      */
     private int calculateDefendStrength(Order headToHeadMoveOrder, boolean optimistic, Collection<Order> orders) {
 
-        if (headToHeadMoveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Head-to-Head
+        if (headToHeadMoveOrder.orderType != OrderType.MOVE)
+            // (Does not check if the Move Order is indeed Head-to-Head)
             throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculateDefendStrength(...)`: %s", headToHeadMoveOrder));
 
         return 1+tallySuccessfulSupports(headToHeadMoveOrder, optimistic, orders);
@@ -715,7 +724,7 @@ public class Judge {
                 return 0;
             else
                 return 1;
-        }
+        } // else: below
 
         return 1+tallySuccessfulSupports(occupant, optimistic, orders);
 

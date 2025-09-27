@@ -4,6 +4,16 @@ public class StrictJudge extends Judge {
 
     protected Collection<Order> voidedOrders = null;
 
+
+    public StrictJudge() {
+        super();
+    }
+
+    public StrictJudge(Collection<Order> orders) {
+        super(orders);
+    }
+
+
     @Override
     public void judge() {
 

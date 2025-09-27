@@ -71,7 +71,7 @@ public enum Province {
     ENG("English Channel", true),
     BOT("Gulf of Bothnia", true),
     LYO("Gulf of Lyon", true),
-    HEL("Heligoland Bight", true),
+    HEL("Helgoland Bight", true),
     ION("Ionian Sea", true),
     IRI("Irish Sea", true),
     MAO("Mid-Atlantic Ocean", true),

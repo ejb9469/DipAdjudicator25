@@ -3,7 +3,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Abstract class of static utility functions re: Convoy Orders and Collections of Convoy Orders
+ * Abstract class of static utility functions re: Convoy and Convoy pathing functionality
  */
 public abstract class Convoys extends Orders {
 

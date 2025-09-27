@@ -165,7 +165,7 @@ public abstract class Orders {
             if (order2.equals(moveOrder) || order2.orderType != OrderType.MOVE)
                 continue;
             if (order2.pos1 == moveOrder.pos0 && order2.pos0 == moveOrder.pos1)
-                return moveOrder;
+                return order2;
         }
 
         return null;

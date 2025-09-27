@@ -65,7 +65,7 @@ public class TestCase {
             this.judge();
 
             for (int i = 0; i < orders.size(); i++) {
-                if (!Arrays.equals(expectedFields.get(i),actualFields.get(i)))
+                if (!Arrays.equals(expectedFields.get(i), actualFields.get(i)))
                     score--;
                 output.append(String.format("%s\n\t%s\n\t%s:%s\n\t%s:%s\n",
                         orders.get(i).toString(), orders.get(i).metaToString(),
@@ -135,7 +135,7 @@ public class TestCase {
     }
 
     public void printNameAndScore() {
-        System.out.printf("%s%s: \t\t\t[%02d/%02d]\n", TESTCASE_PREFIX, this.getName(), this.score, this.orders.size());
+        System.out.printf("[%02d/%02d]\t%s%s\n", this.score, this.orders.size(), TESTCASE_PREFIX, this.getName());
     }
 
 }

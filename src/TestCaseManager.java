@@ -14,9 +14,9 @@ public class TestCaseManager {
         this.prints = true;
     }
 
-    public TestCaseManager(boolean isPrinting) {
+    public TestCaseManager(boolean willPrint) {
         this.testCases = new ArrayList<>();
-        this.prints = isPrinting;
+        this.prints = willPrint;
     }
 
 
@@ -24,12 +24,12 @@ public class TestCaseManager {
         return this.testCases;
     }
 
-    public boolean prints() {
+    public boolean willPrint() {
         return this.prints;
     }
 
     public void togglePrint() {
-        this.prints = !prints;
+        this.prints = !this.prints;
     }
 
 
@@ -50,12 +50,25 @@ public class TestCaseManager {
 
     public int score() {
         int score = 0;
+        for (TestCase testCase : this.testCases) {
+            if (testCase.getScore() == testCase.getOrders().size())
+                score++;
+        }
+        return score;
+    }
+
+    public int size() {
+        return this.testCases.size();
+    }
+
+    public int ordersScore() {
+        int score = 0;
         for (TestCase testCase : this.testCases)
             score += testCase.getScore();
         return score;
     }
 
-    public int size() {
+    public int ordersSize() {
         int size = 0;
         for (TestCase testCase : this.testCases)
             size += testCase.getOrders().size();
@@ -68,19 +81,25 @@ public class TestCaseManager {
         //example();
         // See `example_main.txt` for contents of `example()`
 
-        System.out.println("\n----------------------------------------");
+        System.out.println("\n----------------------------------------\n");
 
         TestCaseManager manager = new TestCaseManager(true);
         FileTestCaseParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
 
         Collection<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(testCases);
-        System.out.println("----------------------------------------\n\n");
+        System.out.println("\n----------------------------------------\n");
         for (TestCase testCase : manager.testCases)
-            testCase.eval(manager.prints());
+            testCase.eval(manager.willPrint());
 
         System.out.println("----------------------------------------\n");
-        System.out.printf("TOTAL SCORE: [%d/%d]\n", manager.score(), manager.size());
+        for (TestCase testCase : manager.testCases)
+            testCase.printNameAndScore();
+
+        System.out.println("\n----------------------------------------");
+        System.out.printf("TOTAL SCORE (by Test Cases):\t[%d/%d]\n", manager.score(), manager.size());
+        System.out.printf("TOTAL SCORE (by Orders):\t\t[%d/%d]\n", manager.ordersScore(), manager.ordersSize());
+        System.out.println("----------------------------------------\n");
 
     }
 
