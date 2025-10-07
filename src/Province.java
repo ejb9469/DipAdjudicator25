@@ -2,15 +2,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum Province {
+public enum Province implements StrictState {
 
-    // TODO: Coast support
 
     Boh("Bohemia", false, false),
     Bud("Budapest", false, true),
     Gal("Galicia", false, false),
-    Tri("Trieste", false, true),
-    Tyr("Tyrolia", true, false),
+    Tri("Trieste", true, true),
+    Tyr("Tyrolia", false, false),
     Vie("Vienna", false, true),
     Cly("Clyde", true, false),
     Edi("Edinburgh", true, true),
@@ -86,100 +85,218 @@ public enum Province {
     SpaNC("Spain (north coast)", true, true, true),
     SpaSC("Spain (south coast)", true, true, true),
     BulEC("Bulgaria (east coast)", true, true, true),
-    BulSC("Bulgaria (south coast)", true, true, true),
-    Swi("Switzerland", false, false);
-
-    private final String name;
-    private final short waterAccess;
-    private final boolean supplyCenter;
-    private final boolean splitCoast;
-
-    private static Map<Province, Province[]> adjacencyMap;
-
-    private static final Map<String, Province> validNames = new HashMap<>();  //{"Bohemia", "Budapest"};  // TODO
+    BulSC("Bulgaria (south coast)", true, true, true);
 
 
-    public static Map<String, String> generateFullNamesToAbbreviationsMap() {
 
-        Map<String, String> map = new HashMap<>();
+    public static final char SUFFIX_DELIM = '/';  // e.g. "Bul/ec"
 
-        for (Province province : Province.values()) {
-            map.put(province.getName(), province.name());
+    // `adjacencyMap` and `aliasesMap` autopopulate at runtime, once for every new Province constant
+    private static Map<Province, Province[]>    adjacencyMap;
+    private static Map<String, Province>        aliasesMap;  // TODO: Flesh out, add secondary names & common misspellings
+
+
+    public final String     fullName;
+
+    public boolean          supplyCenter;
+    public boolean          homeSC;
+
+    public Geography        geography;
+
+    public int              coastId;
+    public CoastType        coastType;
+
+    public Province         parent;  // Used for explicitly-split coasts (ATM)
+
+    public String           suffix = "";  // e.g. "ec", blank by default
+
+
+    // Full constructor
+    private Province(String fullName, Geography geography, boolean supplyCenter, boolean homeSC, int coastId, boolean canal, boolean splitCoast, Province parent) {
+
+        populateAdjacencyMap();
+
+        this.fullName = fullName;
+        this.supplyCenter = supplyCenter;
+        this.homeSC = homeSC;
+        this.geography = geography;
+        this.coastId = coastId;
+        if (canal)
+            coastType = CoastType.CANAL;
+        else if (splitCoast)
+            coastType = CoastType.SPLIT;
+        else if (geography == Geography.COASTAL)
+            coastType = CoastType.NORMAL;
+        else
+            coastType = CoastType.NONE;
+        this.parent = parent;
+
+        // Call `enforceStasis()` at the end of construction of all Province constants
+        // --> (All other constructors call this one...)
+        try {
+            enforceStasis();
+        } catch (IllegalStateException ex) {
+            System.err.println(ex.toString());
         }
-        return map;
 
     }
 
-    private Province(String name, boolean coastal, boolean supplyCenter, boolean splitCoast) {
-        populateAdjacencyMap();
-        this.name = name;
-        this.supplyCenter = supplyCenter;
-        if (!coastal)
-            this.waterAccess = 0;
+    private Province(String fullName, boolean coastal, boolean supplyCenter, boolean splitCoast) {  // Assumed land province, coastal
+
+        Geography geography;
+        if (coastal)
+            geography = Geography.COASTAL;
         else
-            this.waterAccess = 1;
-        this.splitCoast = splitCoast;
+            geography = Geography.INLAND;
+
+        this(fullName, geography, supplyCenter, false, -1, false, splitCoast, null);
+
     }
 
-    private Province(String name, boolean coastal, boolean supplyCenter) {  // Assumed land province
-        populateAdjacencyMap();
-        this.name = name;
-        this.supplyCenter = supplyCenter;
-        if (!coastal)
-            this.waterAccess = 0;
+    private Province(String fullName, boolean coastal, boolean supplyCenter) {  // Assumed land province
+
+        Geography geography;
+        if (coastal)
+            geography = Geography.COASTAL;
         else
-            this.waterAccess = 1;
-        splitCoast = false;
+            geography = Geography.INLAND;
+
+        this(fullName, geography, supplyCenter, false, -1, false, false, null);
+
     }
 
-    private Province(String name, boolean water) {  // Assumes no supply centers in water, DETERMINISTIC
-        populateAdjacencyMap();
-        this.name = name;
-        this.waterAccess = 2;
-        this.supplyCenter = false;
-        splitCoast = false;
+    private Province(String fullName, boolean water) {  // Assumes no supply centers in water, DETERMINISTIC (value of `water` is irrelevant)
+
+        this(fullName, Geography.WATER, false, false, -1, false, false, null);
+
     }
 
-    boolean isAdjacentTo(Province province) {
-        if (province == Province.Swi || this == Province.Swi) return false;
-        return (Arrays.asList(adjacencyMap.get(this)).contains(province));
+
+    /**
+     * Determines whether 'this' Province is directly adjacent to another given Province
+     * by consulting the static Adjacency Map
+     *
+     * @param pos1 'Other' province
+     * @return Whether this Province is adjacent to Province `pos1`
+     */
+    public boolean isAdjacentTo(Province pos1) {
+
+        return (Arrays.asList(adjacencyMap.get(this)).contains(pos1));
+
     }
 
-    boolean isCoastal() {
-        return (waterAccess == 1);
+    /**
+     * Determines whether 'this' Province is adjacent to another given Province, <i>while ignoring <b>split coast rules</b></i><br>
+     * The function is very lenient, and tries all combinations of the 2 Provinces & their parents<br><br>
+     *
+     * <b>NOTE:</b> Moves such as "F Tus S Tri - Ven" will still fail; only <i>split</i> coast rules are bypassed. e.g "F BOT S BAR - Stp/nc"
+     *
+     * @param pos1 'Other' Province
+     * @return Whether this Province is adjacent to Province `pos1`, <i>ignoring split coast rules!!</i>
+     */
+    public boolean isAdjacentToIgnoreSplitCoast(Province pos1) {
+
+        boolean genericAdjacency = this.isAdjacentTo(pos1);
+
+        // If generic adjacency function passes (the coast(s) itself are adjacent), this func should pass immediately
+        if (genericAdjacency)
+            return true;
+
+        if (this.coastType == CoastType.SPLIT && pos1.coastType == CoastType.SPLIT) {  // Both are split coasts (rare)
+
+            if (this.parent != null && pos1.parent != null)
+                return this.parent.isAdjacentTo(pos1.parent);
+            else if (this.parent != null || pos1.parent != null)
+                return this.parent.isAdjacentTo(pos1) || this.isAdjacentTo(pos1.parent);
+            else
+                return genericAdjacency;
+
+        } else if (this.coastType == CoastType.SPLIT) {  // -> [`pos1.coastType` != SPLIT]
+
+            if (this.parent != null)
+                return this.parent.isAdjacentTo(pos1);
+            else
+                return genericAdjacency;
+
+        } else if (pos1.coastType == CoastType.SPLIT) {  // -> [`this.coastType` != SPLIT]
+
+            if (pos1.parent != null)
+                return this.isAdjacentTo(pos1.parent);
+            else
+                return genericAdjacency;
+
+        } else {
+
+            // There are no split coasts involved, so just ret to generic adjacency function
+            // --> (Should be `false`...)
+            return genericAdjacency;
+
+        }
+
     }
 
-    boolean isWater() {
-        return (waterAccess == 2);
+
+    @Override
+    public void enforceStasis() throws IllegalStateException {
+
+        if (this.homeSC)
+            this.supplyCenter = true;
+
+        if (this.geography != Geography.COASTAL) {
+            this.coastId = -1;
+            this.coastType = CoastType.NONE;
+            // Will need to remove the below line if we ever expand on the idea of Province hierarchy, beyond just split coasts
+            this.parent = null;
+        }
+
+        if (this.geography == Geography.WATER) {  // No SCs in Water (ATM)
+            this.supplyCenter = false;
+            this.homeSC = false;
+        }
+
+        if (this.parent != null) {  // Province is Coastal
+            //this.geography = Geography.COASTAL; (redundant)
+            // Will need to remove this block if we ever expand on the idea of Province hierarchy, beyond just split coasts
+            this.coastType = CoastType.SPLIT;
+        }
+
+        if (this.coastId == -1 && this.coastType == CoastType.NORMAL)  // Province is Coastal
+            throw new IllegalStateException(String.format(
+                    "`%s.%s:enforceStasis()`: CoastType is %s but coastId is %d, can/will lead to adjacency calculation issues",
+                    this.getClass().getSimpleName(), this.toString(), this.coastType, this.coastId));
+
     }
 
-    boolean isSupplyCenter() {
-        return supplyCenter;
+    public void configureCoast(int coastId, CoastType coastType) {
+
+        this.coastId = coastId;
+        this.coastType = coastType;
+        enforceStasis();  // Double-check for validity -- TODO
+
     }
 
-    public boolean hasSplitCoast() {
-        return splitCoast;
+    public void configureCoast(int coastId, Province parent) {
+
+        this.coastId = coastId;
+        this.coastType = CoastType.SPLIT;
+        this.parent = parent;
+        enforceStasis();  // Double-check for validity -- TODO
+
     }
 
-    String getName() {
-        return name;
+
+    public static Map<String, Province> populateAliasesMap() {
+
+        aliasesMap = new HashMap<>();
+
+        for (Province province : Province.values())
+            aliasesMap.put(province.fullName, province);
+
+        return aliasesMap;
+
     }
 
-    boolean correctName(String n) {
-        return name.equals(n);
-    }
-
-    static boolean isValidName(String n) {
-        return validNames.containsKey(n);
-    }
-
-    static Province convertToEnum(String n) {
-        return validNames.get(n);
-    }
-
-    // No setter tbd
-
-    private static void populateAdjacencyMap() {
+    private static Map<Province, Province[]> populateAdjacencyMap() {
 
         adjacencyMap = new HashMap<>();
 
@@ -264,8 +381,25 @@ public enum Province {
         adjacencyMap.put(Province.SpaSC, new Province[]{Province.MAO, Province.Mar, Province.LYO, Province.WES, Province.Por});
         adjacencyMap.put(Province.BulEC, new Province[]{Province.Rum, Province.BLA, Province.Con});
         adjacencyMap.put(Province.BulSC, new Province[]{Province.Con, Province.AEG, Province.Gre});
-        adjacencyMap.put(Province.Swi, new Province[]{});  // teehee
+
+        return adjacencyMap;
 
     }
+
+
+    @Override
+    public String toString() {
+
+        if (suffix.isEmpty() && this.parent == null)
+            return this.name();
+        else if (suffix.isEmpty())  // Parent is non-null
+            return this.parent.name();
+        else if (this.parent != null)  // Suffix is non-empty
+            return (this.parent.name() + SUFFIX_DELIM + this.suffix);
+        else  // Parent is null, suffix is non-empty
+            return (this.name() + SUFFIX_DELIM + this.suffix);
+
+    }
+
 
 }

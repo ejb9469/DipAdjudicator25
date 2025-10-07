@@ -23,10 +23,10 @@ public abstract class Orders {
                     // Locations in `Province` are not adjacent to themselves regardless,
                     // ... but for posterity's sake, we deem these moves illegal
                     return false;
-                if (order.unitType == UnitType.ARMY && order.pos1.isWater())
+                if (order.unitType == UnitType.ARMY && order.pos1.geography == Geography.WATER)
                     // Armies cannot go into water
                     return false;
-                else if (order.unitType == UnitType.FLEET && !order.pos1.isWater() && !order.pos1.isCoastal())
+                else if (order.unitType == UnitType.FLEET && !(order.pos1.geography == Geography.WATER) && !(order.pos1.geography == Geography.COASTAL))
                     // Fleets cannot go inland
                     return false;
                 else if (order.unitType == UnitType.FLEET && !order.pos0.isAdjacentTo(order.pos1))
@@ -222,7 +222,7 @@ public abstract class Orders {
             if (order2.pos0.isAdjacentTo(moveOrder.pos0) &&
                     order2.orderType == OrderType.CONVOY &&
                     order2.unitType == UnitType.FLEET &&
-                    order2.pos0.isWater()) {
+                    order2.pos0.geography == Geography.WATER) {
                 if (order2.pos1 == moveOrder.pos0 && order2.pos2 == moveOrder.pos1)
                     return true;
             }

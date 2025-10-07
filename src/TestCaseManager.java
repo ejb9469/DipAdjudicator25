@@ -6,7 +6,7 @@ public class TestCaseManager {
 
 
     private final List<TestCase> testCases;
-    private boolean prints;
+    private final boolean prints;
 
 
     public TestCaseManager() {
@@ -17,34 +17,6 @@ public class TestCaseManager {
     public TestCaseManager(boolean willPrint) {
         this.testCases = new ArrayList<>();
         this.prints = willPrint;
-    }
-
-
-    public List<TestCase> getTestCases() {
-        return this.testCases;
-    }
-
-    public boolean willPrint() {
-        return this.prints;
-    }
-
-    public void togglePrint() {
-        this.prints = !this.prints;
-    }
-
-
-    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean... expectedFields) {
-        testCase.setExpectedFields(expectedFields);
-        this.testCases.add(testCase);
-        if (evalNow)
-            testCase.eval(this.prints);
-    }
-
-    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
-        testCase.setExpectedFields(expectedFields);
-        this.testCases.add(testCase);
-        if (evalNow)
-            testCase.eval(this.prints);
     }
 
 
@@ -73,6 +45,29 @@ public class TestCaseManager {
         for (TestCase testCase : this.testCases)
             size += testCase.getOrders().size();
         return size;
+    }
+
+    public List<TestCase> getTestCases() {
+        return this.testCases;
+    }
+
+    public boolean willPrint() {
+        return this.prints;
+    }
+
+
+    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean... expectedFields) {
+        testCase.setExpectedFields(expectedFields);
+        this.testCases.add(testCase);
+        if (evalNow)
+            testCase.eval(this.prints);
+    }
+
+    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
+        testCase.setExpectedFields(expectedFields);
+        this.testCases.add(testCase);
+        if (evalNow)
+            testCase.eval(this.prints);
     }
 
 

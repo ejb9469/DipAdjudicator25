@@ -15,7 +15,7 @@ public class Order {
     public Province pos0, pos1, pos2;
 
     // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
-    public boolean dislodged = false;
+    public boolean dislodged;
 
     // Metadata fields
     public boolean resolved;
@@ -60,8 +60,8 @@ public class Order {
      */
     public String unitToString() {
         String output = owner.getPrefix() + " ";
-        output += unitType.name().charAt(0) + " ";
-        output += pos0.name();
+        output += unitType.toString().charAt(0) + " ";
+        output += pos0.toString();
         return output;
     }
 
@@ -86,22 +86,22 @@ public class Order {
         String output = this.unitToString();
 
         if (orderType == OrderType.MOVE) {
-            output += " - " + pos1.name();  // .getName() would return the PROVINCE's full name
+            output += " - " + pos1.toString();  // .getName() would return the PROVINCE's full name
         } else if (orderType == OrderType.HOLD) {
             output += " H";
         } else if (orderType == OrderType.SUPPORT) {
-            output += " S " + pos1.name() + " ";
+            output += " S " + pos1.toString() + " ";
             if (pos2 == null)
                 output += "H";
             else
-                output += "- " + pos2.name();
+                output += "- " + pos2.toString();
         } else if (orderType == OrderType.CONVOY) {
-            output += " C " + pos1.name() + " - " + pos2.name();
+            output += " C " + pos1.toString() + " - " + pos2.toString();
         } else if (orderType == OrderType.RETREAT) {
             if (pos1 == null)
                 output += " PIFF";
             else
-                output += " R " + pos1.name();
+                output += " R " + pos1.toString();
         }
 
         return output;

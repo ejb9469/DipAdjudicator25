@@ -37,7 +37,7 @@ public class DATCParser implements TestCaseParser {
 
                 // Parse ORIGIN (pos0)
                 Province origin;
-                Map<String, String> namesToAbbrsMap = Province.generateFullNamesToAbbreviationsMap();
+                Map<String, Province> namesToAbbrsMap = Province.populateAliasesMap();
                 String originStr;
                 byte extraIndex = 0;
                 if (namesToAbbrsMap.containsKey(descriptorParts[1]))  // e.g. "Clyde"
@@ -49,7 +49,7 @@ public class DATCParser implements TestCaseParser {
                     originStr = String.format("%s %s %s", descriptorParts[1], descriptorParts[2], descriptorParts[3]);
                     extraIndex += 2;
                 }
-                origin = Province.valueOf(namesToAbbrsMap.get(originStr));
+                origin = Province.valueOf(namesToAbbrsMap.get(originStr).toString());
 
                 // Parse ORDER TYPE
                 OrderType orderType;
@@ -79,7 +79,7 @@ public class DATCParser implements TestCaseParser {
                             if (i != descriptorParts.length-1)
                                 pos1Str.append(" ");
                         }
-                        pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString()));
+                        pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString()).toString());
                         pos2 = null;
                     } else {  // CONVOY / SUPPORT TO MOVE
                         int i = 4+extraIndex;
@@ -91,8 +91,8 @@ public class DATCParser implements TestCaseParser {
                             if (i != descriptorParts.length-1)
                                 pos2Str.append(" ");
                         }
-                        pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString().strip()));
-                        pos2 = Province.valueOf(namesToAbbrsMap.get(pos2Str.toString().strip()));
+                        pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString().strip()).toString());
+                        pos2 = Province.valueOf(namesToAbbrsMap.get(pos2Str.toString().strip()).toString());
                     }
                 } else if (orderType == OrderType.MOVE) {
                     StringBuilder pos1Str = new StringBuilder();
@@ -101,7 +101,7 @@ public class DATCParser implements TestCaseParser {
                         if (i != descriptorParts.length-1)
                             pos1Str.append(" ");
                     }
-                    pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString()));
+                    pos1 = Province.valueOf(namesToAbbrsMap.get(pos1Str.toString()).toString());
                     pos2 = null;
                 } else /*if (orderType == OrderType.HOLD)*/ {
                     pos1 = null;
