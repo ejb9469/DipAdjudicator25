@@ -26,11 +26,17 @@ public abstract class Orders {
                 if (order.unitType == UnitType.ARMY && order.pos1.geography == Geography.WATER)
                     // Armies cannot go into water
                     return false;
-                else if (order.unitType == UnitType.FLEET && !(order.pos1.geography == Geography.WATER) && !(order.pos1.geography == Geography.COASTAL))
+                else if (order.unitType == UnitType.ARMY && order.pos1.coastType == CoastType.SPLIT)
+                    // Armies cannot traverse split coasts
+                    return false;
+                else if (order.unitType == UnitType.FLEET && order.pos1.geography == Geography.INLAND)
                     // Fleets cannot go inland
                     return false;
                 else if (order.unitType == UnitType.FLEET && !order.pos0.isAdjacentTo(order.pos1))
                     // Fleets cannot skip provinces (i.e. cannot be convoyed)
+                    return false;
+                else if (order.unitType == UnitType.FLEET && !Province.adjacentBySea(order.pos0, order.pos1))
+                    // Fleets must be "adjacent by sea" when coast-crawling
                     return false;
                 return true;
             }
@@ -40,15 +46,21 @@ public abstract class Orders {
                 // and support-holds are formatted with `pos2` == null
                 if (order.pos1 == order.pos2)
                     return false;
-                // Support & convoy orders must be adjacent to their dest. location
-                if (!order.pos0.isAdjacentTo(order.pos2))
-                    return false;
-                return true;
+                // !! Support & convoy orders must be adjacent to their dest. location !!
+                // Fleets issuing supports can break split-coast adjacency rules, so use the appropriate helper method
+                // Fleets must also be "adjacent by sea" when coast-crawling
+                // ... [`.isAdjacentToIgnoreSplitCoast(...)`]
+                if (order.pos2 == null)  // First handle support holds...
+                    return (order.pos0.isAdjacentToIgnoreSplitCoast(order.pos1) &&
+                            (order.unitType != UnitType.FLEET || Province.adjacentBySea(order.pos0, order.pos1)));
+                else  // ...Then handle support-moves
+                    return (order.pos0.isAdjacentToIgnoreSplitCoast(order.pos2) &&
+                            (order.unitType != UnitType.FLEET || Province.adjacentBySea(order.pos0, order.pos2)));
             }
 
             case HOLD -> {
                 // Hold orders must have no location fields
-                return order.pos0 == null && order.pos1 == null;
+                return order.pos1 == null && order.pos2 == null;
             }
 
             case RETREAT -> {

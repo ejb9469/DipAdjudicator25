@@ -17,10 +17,10 @@ public class Order {
     // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
     public boolean dislodged;
 
-    // Metadata fields
-    public boolean resolved;
-    public boolean verdict;
-    public boolean visited;
+    // Metadata fields -- `protected` access modifiers
+    protected boolean resolved;
+    protected boolean verdict;
+    protected boolean visited;
 
 
     public Order(Nation owner, UnitType unitType, Province origin, OrderType orderType, Province pos1, Province pos2, boolean dislodged) {
@@ -70,7 +70,7 @@ public class Order {
      *
      * @return String representation of this Order's metadata fields
      */
-    public String metaToString() {
+    protected String metaToString() {
         return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
 
@@ -102,6 +102,10 @@ public class Order {
                 output += " PIFF";
             else
                 output += " R " + pos1.toString();
+        } else if (orderType == OrderType.BUILD) {
+            output += " BUILD";
+        } else if (orderType == OrderType.DESTROY) {
+            output += " DESTROY";
         }
 
         return output;

@@ -6,61 +6,61 @@ public enum Province implements StrictState {
 
 
     Boh("Bohemia", false, false),
-    Bud("Budapest", false, true),
+    Bud("Budapest", Geography.INLAND, true, Nation.AUSTRIA),
     Gal("Galicia", false, false),
-    Tri("Trieste", true, true),
+    Tri("Trieste", Geography.COASTAL, true, Nation.AUSTRIA, 7, false, false),
     Tyr("Tyrolia", false, false),
-    Vie("Vienna", false, true),
-    Cly("Clyde", true, false),
-    Edi("Edinburgh", true, true),
-    Lvp("Liverpool", true, true),
-    Lon("London", true, true),
-    Wal("Wales", true, false),
-    Yor("Yorkshire", true, false),
-    Bre("Brest", true, true),
+    Vie("Vienna", Geography.INLAND, true, Nation.AUSTRIA),
+    Cly("Clyde", Geography.COASTAL, false, null, 3, false, false),
+    Edi("Edinburgh", Geography.COASTAL, true, Nation.ENGLAND, 2, false, false),
+    Lvp("Liverpool", Geography.COASTAL, true, Nation.ENGLAND, 4 ,false, false),
+    Lon("London", Geography.COASTAL, true, Nation.ENGLAND, 2, false, false),
+    Wal("Wales", Geography.COASTAL, false, null, 3, false, false),
+    Yor("Yorkshire", Geography.COASTAL, false, null, 1, false, false),
+    Bre("Brest", Geography.COASTAL, true, Nation.FRANCE, 17, false, false),
     Bur("Burgundy", false, false),
-    Gas("Gascony", true, false),
-    Mar("Marseilles", true, true),
-    Par("Paris", false, true),
-    Pic("Picardy", true, false),
-    Ber("Berlin", true, true),
-    Kie("Kiel", true, true),
-    Mun("Munich", false, true),
-    Pru("Prussia", true, false),
+    Gas("Gascony", Geography.COASTAL, false, null, 16, false, false),
+    Mar("Marseilles", Geography.COASTAL, true, Nation.FRANCE, 14, false, false),
+    Par("Paris", Geography.INLAND, true, Nation.FRANCE),
+    Pic("Picardy", Geography.COASTAL, false, null, 18, false, false),
+    Ber("Berlin", Geography.COASTAL, true, Nation.GERMANY, 22, false, false),
+    Kie("Kiel", Geography.COASTAL, true, Nation.GERMANY, 21, false, false),
+    Mun("Munich", Geography.INLAND, true, Nation.GERMANY),
+    Pru("Prussia", Geography.COASTAL, false, null, 23, false, false),
     Ruh("Ruhr", false, false),
     Sil("Silesia", false, false),
-    Apu("Apulia", true, false),
-    Nap("Naples", true, true),
-    Pie("Piedmont", true, false),
-    Rom("Rome", true, true),
-    Tus("Tuscany", true, false),
-    Ven("Venice", true, true),
-    Lvn("Livonia", true, false),
-    Mos("Moscow", false, true),
-    Sev("Sevastopol", true, true),
-    Stp("St. Petersburg", true, true, false),
+    Apu("Apulia", Geography.COASTAL, false, null, 9, false, false),
+    Nap("Naples", Geography.COASTAL, true, Nation.ITALY, 10, false, false),
+    Pie("Piedmont", Geography.COASTAL, false, null, 13, false, false),
+    Rom("Rome", Geography.COASTAL, true, Nation.ITALY, 11, false, false),
+    Tus("Tuscany", Geography.COASTAL, false, null, 12, false, false),
+    Ven("Venice", Geography.COASTAL, true, Nation.ITALY, 8, false, false),
+    Lvn("Livonia", Geography.COASTAL, false, null, 24, false, false),
+    Mos("Moscow", Geography.INLAND, true, Nation.RUSSIA),
+    Sev("Sevastopol", Geography.COASTAL, true, Nation.RUSSIA, 6, false, false),
+    Stp("St. Petersburg", Geography.COASTAL, true, Nation.RUSSIA, 25, false, false, null),
     Ukr("Ukraine", false, false),
-    War("Warsaw", false, true),
-    Ank("Ankara", true, true),
-    Arm("Armenia", true, false),
-    Con("Constantinople", true, true),
-    Smy("Smyrna", true, true),
-    Syr("Syria", true, false),
-    Alb("Albania", true, false),
-    Bel("Belgium", true, true),
-    Bul("Bulgaria", true, true, false),
-    Fin("Finland", true, false),
-    Gre("Greece", true, true),
-    Hol("Holland", true, true),
-    Nwy("Norway", true, true),
-    Naf("North Africa", true, false),
-    Por("Portugal", true, true),
-    Rum("Rumania", true, true),
+    War("Warsaw", Geography.INLAND, true, Nation.RUSSIA),
+    Ank("Ankara", Geography.COASTAL, true, Nation.TURKEY, 4 , false, false),
+    Arm("Armenia", Geography.COASTAL, false, null, 5, false, false),
+    Con("Constantinople", Geography.COASTAL, true, Nation.TURKEY, 3, true, false, null),
+    Smy("Smyrna", Geography.COASTAL, true, Nation.TURKEY, 2, false, false),
+    Syr("Syria", Geography.COASTAL, false, null, 1, false, false),
+    Alb("Albania", Geography.COASTAL, false, null, 6, false, false),
+    Bel("Belgium", Geography.COASTAL, true, null, 19, false, false),
+    Bul("Bulgaria", Geography.COASTAL, true, null, 4, false, false, null),
+    Den("Denmark", Geography.COASTAL, true, null, 22, true, false, null),
+    Fin("Finland", Geography.COASTAL, false, null, 24, false, false),
+    Gre("Greece", Geography.COASTAL, true, null, 5, false, false),
+    Hol("Holland", Geography.COASTAL, true, null, 20, false, false),
+    Nwy("Norway", Geography.COASTAL, true, null, 24, false, false),
+    Naf("North Africa", Geography.COASTAL, false, null, 2, false, false),
+    Por("Portugal", Geography.COASTAL, true, null, 16, false, false),
+    Rum("Rumania", Geography.COASTAL, true, null, 5, false, false),
     Ser("Serbia", false, true),
-    Spa("Spain", true, true, false),
-    Swe("Sweden", true, true),
-    Tun("Tunis", true, true),
-    Den("Denmark", true, true),
+    Spa("Spain", Geography.COASTAL, true, null, 15, false, false, null),
+    Swe("Sweden", Geography.COASTAL, true, null, 23, false, false),
+    Tun("Tunis", Geography.COASTAL, true, null, 1, false, false),
     ADR("Adriatic Sea", true),
     AEG("Aegean Sea", true),
     BAL("Baltic Sea", true),
@@ -80,26 +80,26 @@ public enum Province implements StrictState {
     SKA("Skagerrak", true),
     TYS("Tyrrhenian Sea", true),
     WES("Western Mediterranean", true),
-    StpNC("St. Petersburg (north coast)", true, true, true),
-    StpSC("St. Petersburg (south coast)", true, true, true),
-    SpaNC("Spain (north coast)", true, true, true),
-    SpaSC("Spain (south coast)", true, true, true),
-    BulEC("Bulgaria (east coast)", true, true, true),
-    BulSC("Bulgaria (south coast)", true, true, true);
+    StpNC("St. Petersburg (north coast)", Geography.COASTAL, true, Nation.RUSSIA, Province.Stp.coastId, false, true, Province.Stp, "nc"),
+    StpSC("St. Petersburg (south coast)", Geography.COASTAL, true, Nation.RUSSIA, Province.Stp.coastId, false, true, Province.Stp, "sc"),
+    SpaNC("Spain (north coast)", Geography.COASTAL, true, null, Province.Spa.coastId, false, true, Province.Spa, "nc"),
+    SpaSC("Spain (south coast)", Geography.COASTAL, true, null, Province.Spa.coastId, false, true, Province.Spa, "sc"),
+    BulEC("Bulgaria (east coast)", Geography.COASTAL, true, null, Province.Bul.coastId, false, true, Province.Bul, "ec"),
+    BulSC("Bulgaria (south coast)", Geography.COASTAL, true, null, Province.Bul.coastId, false, true, Province.Bul, "sc");
 
 
 
-    public static final char SUFFIX_DELIM = '/';  // e.g. "Bul/ec"
+    public static final char    SUFFIX_DELIM = '/';  // e.g. "Bul/ec"
 
     // `adjacencyMap` and `aliasesMap` autopopulate at runtime, once for every new Province constant
     private static Map<Province, Province[]>    adjacencyMap;
-    private static Map<String, Province>        aliasesMap;  // TODO: Flesh out, add secondary names & common misspellings
+    private static Map<String, Province>        aliasesMap;  // TODO: Flesh out, add secondary names & common misspellings (in `populateAliasesMap()`)
 
 
     public final String     fullName;
 
     public boolean          supplyCenter;
-    public boolean          homeSC;
+    public Nation           owner;
 
     public Geography        geography;
 
@@ -111,16 +111,17 @@ public enum Province implements StrictState {
     public String           suffix = "";  // e.g. "ec", blank by default
 
 
-    // Full constructor
-    private Province(String fullName, Geography geography, boolean supplyCenter, boolean homeSC, int coastId, boolean canal, boolean splitCoast, Province parent) {
+    // Full constructor - modern
+    private Province(String fullName, Geography geography, boolean supplyCenter, Nation owner, int coastId, boolean canal, boolean splitCoast, Province parent) {
 
         populateAdjacencyMap();
 
         this.fullName = fullName;
         this.supplyCenter = supplyCenter;
-        this.homeSC = homeSC;
+        this.owner = owner;
         this.geography = geography;
         this.coastId = coastId;
+
         if (canal)
             coastType = CoastType.CANAL;
         else if (splitCoast)
@@ -129,6 +130,7 @@ public enum Province implements StrictState {
             coastType = CoastType.NORMAL;
         else
             coastType = CoastType.NONE;
+
         this.parent = parent;
 
         // Call `enforceStasis()` at the end of construction of all Province constants
@@ -141,18 +143,40 @@ public enum Province implements StrictState {
 
     }
 
-    private Province(String fullName, boolean coastal, boolean supplyCenter, boolean splitCoast) {  // Assumed land province, coastal
+    // Full constructor + suffix - modern
+    private Province(String fullName, Geography geography, boolean supplyCenter, Nation owner, int coastId, boolean canal, boolean splitCoast, Province parent, String suffix) {
 
-        Geography geography;
-        if (coastal)
-            geography = Geography.COASTAL;
-        else
-            geography = Geography.INLAND;
-
-        this(fullName, geography, supplyCenter, false, -1, false, splitCoast, null);
+        this(fullName, geography, supplyCenter, owner, coastId, canal, splitCoast, parent);
+        this.suffix = suffix;
 
     }
 
+    // Mini-constructor + coast info - modern
+    private Province(String fullName, Geography geography, boolean supplyCenter, Nation owner, int coastId, boolean canal, boolean splitCoast) {
+
+        this(fullName, geography, supplyCenter, owner, coastId, canal, splitCoast, null);
+
+    }
+
+    // Mini-constructor - modern
+    private Province(String fullName, Geography geography, boolean supplyCenter, Nation owner) {
+
+        this(fullName, geography, supplyCenter, owner, -1, false, false, null);
+
+    }
+
+
+    // 3-bool constructor - deprecated
+    private Province(String fullName, boolean coastal, boolean supplyCenter, boolean splitCoast) {  // Assumed land province, coastal (DETERMINISTIC)
+
+        if (!coastal)
+            throw new IllegalStateException("`Province.java`: Used coastal constructor for a non-coastal province");
+
+        this(fullName, Geography.COASTAL, supplyCenter, null, -1, false, splitCoast, null);
+
+    }
+
+    // 2-bool constructor - deprecated
     private Province(String fullName, boolean coastal, boolean supplyCenter) {  // Assumed land province
 
         Geography geography;
@@ -161,13 +185,17 @@ public enum Province implements StrictState {
         else
             geography = Geography.INLAND;
 
-        this(fullName, geography, supplyCenter, false, -1, false, false, null);
+        this(fullName, geography, supplyCenter, null, -1, false, false, null);
 
     }
 
+    // 1-bool constructor - deprecated
     private Province(String fullName, boolean water) {  // Assumes no supply centers in water, DETERMINISTIC (value of `water` is irrelevant)
 
-        this(fullName, Geography.WATER, false, false, -1, false, false, null);
+        if (!water)
+            throw new IllegalStateException("`Province.java`: Used water constructor for a land province");
+
+        this(fullName, Geography.WATER, false, null, -1, false, false, null);
 
     }
 
@@ -235,52 +263,19 @@ public enum Province implements StrictState {
 
     }
 
+    public static boolean adjacentBySea(Province pos0, Province pos1) {
 
-    @Override
-    public void enforceStasis() throws IllegalStateException {
+        boolean genericAdjacency = pos0.isAdjacentTo(pos1);
 
-        if (this.homeSC)
-            this.supplyCenter = true;
+        // Cannot be adjacent by sea if not also adjacent by land
+        if (!genericAdjacency)
+            return false;
+        // Use generic adjacency (now `true`) if no coast-crawling is required
+        else if (pos0.geography != Geography.COASTAL || pos1.geography != Geography.COASTAL)
+            return true;
 
-        if (this.geography != Geography.COASTAL) {
-            this.coastId = -1;
-            this.coastType = CoastType.NONE;
-            // Will need to remove the below line if we ever expand on the idea of Province hierarchy, beyond just split coasts
-            this.parent = null;
-        }
-
-        if (this.geography == Geography.WATER) {  // No SCs in Water (ATM)
-            this.supplyCenter = false;
-            this.homeSC = false;
-        }
-
-        if (this.parent != null) {  // Province is Coastal
-            //this.geography = Geography.COASTAL; (redundant)
-            // Will need to remove this block if we ever expand on the idea of Province hierarchy, beyond just split coasts
-            this.coastType = CoastType.SPLIT;
-        }
-
-        if (this.coastId == -1 && this.coastType == CoastType.NORMAL)  // Province is Coastal
-            throw new IllegalStateException(String.format(
-                    "`%s.%s:enforceStasis()`: CoastType is %s but coastId is %d, can/will lead to adjacency calculation issues",
-                    this.getClass().getSimpleName(), this.toString(), this.coastType, this.coastId));
-
-    }
-
-    public void configureCoast(int coastId, CoastType coastType) {
-
-        this.coastId = coastId;
-        this.coastType = coastType;
-        enforceStasis();  // Double-check for validity -- TODO
-
-    }
-
-    public void configureCoast(int coastId, Province parent) {
-
-        this.coastId = coastId;
-        this.coastType = CoastType.SPLIT;
-        this.parent = parent;
-        enforceStasis();  // Double-check for validity -- TODO
+        // Handle coast-crawling -- coast IDs must be adjacent to sea neighbors
+        return Math.abs(pos0.coastId - pos1.coastId) == 1;
 
     }
 
@@ -388,12 +383,62 @@ public enum Province implements StrictState {
 
 
     @Override
+    public void enforceStasis() throws IllegalStateException {
+
+        if (this.owner != null)
+            this.supplyCenter = true;
+
+        if (this.geography != Geography.COASTAL) {
+            this.coastId = -1;
+            this.coastType = CoastType.NONE;
+            // Will need to remove the below line if we ever expand on the idea of Province hierarchy, beyond just split coasts
+            this.parent = null;
+        }
+
+        if (this.geography == Geography.WATER) {  // No SCs in Water (ATM), water cannot be owned (ATM)
+            this.supplyCenter = false;
+            this.owner = null;
+        }
+
+        if (this.parent != null) {  // Province is Coastal
+            //this.geography = Geography.COASTAL; (redundant)
+            // Will need to remove this block if we ever expand on the idea of Province hierarchy, beyond just split coasts
+            this.coastType = CoastType.SPLIT;
+        }
+
+        if (this.coastId == -1 && this.coastType == CoastType.NORMAL)  // Province is Coastal
+            throw new IllegalStateException(String.format(
+                    "`%s.%s:enforceStasis()`: CoastType is %s but coastId is %d, can/will lead to adjacency calculation issues",
+                    this.getClass().getSimpleName(), this.toString(), this.coastType, this.coastId)
+            );
+
+    }
+
+    public void configureCoast(int coastId, CoastType coastType) {
+
+        this.coastId = coastId;
+        this.coastType = coastType;
+        enforceStasis();  // Double-check for validity -- TODO
+
+    }
+
+    public void configureCoast(int coastId, Province parent) {
+
+        this.coastId = coastId;
+        this.coastType = CoastType.SPLIT;
+        this.parent = parent;
+        enforceStasis();  // Double-check for validity -- TODO
+
+    }
+
+
+    @Override
     public String toString() {
 
         if (suffix.isEmpty() && this.parent == null)
             return this.name();
         else if (suffix.isEmpty())  // Parent is non-null
-            return this.parent.name();
+            return this.parent.name();  // Does not consider the parent's suffix
         else if (this.parent != null)  // Suffix is non-empty
             return (this.parent.name() + SUFFIX_DELIM + this.suffix);
         else  // Parent is null, suffix is non-empty

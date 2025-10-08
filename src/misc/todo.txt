@@ -1,0 +1,17 @@
+::10-08-25::
+#1. Implement Coasts + relevant Test Cases
+#2. Implement Retreats & Builds phases (remember `Retreats.suffocated(...)`!)
+#3. Implement `Referee.java` class that handles dislodgement and tactical results of moves based on context
+#4. Implement `Game.java` class that has one Referee and 1+ Judge(s)
+        --> `Board.java` needed? or superfluous?
+        --> Placement of `TestCaseManager.java` ??
+#5. Implement `GameMaster.java` class that controls the flow of the game -- e.g. `GameCondition.java` enum
+#6. Implement in-dev entry point to play boards
+
+
+~ Read & parse all "to-dos"
+
+~ Province name aliases -- e.g. "Heligoland Bight" vs. "Helgoland Bight"
+~ Add more metadata to Enums (e.g. toString() functions)
+
+~ Allow comments in test case files

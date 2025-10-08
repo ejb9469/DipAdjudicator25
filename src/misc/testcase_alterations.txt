@@ -1,3 +1,7 @@
+6.A.10. SUPPORT ON UNREACHABLE DESTINATION NOT POSSIBLE ::
+    ~ Technically, the support order should fail due to its invalidity, but the program calls it successful.
+    ~ It still does not count the support in any way, so I will leave the interpretation of this Test Case up to a higher level
+
 6.D.28. IMPOSSIBLE MOVE AND SUPPORT ::
     ~ According to the DATC issue 4.E.1 (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1), all invalid orders (incl. moves) should be interpreted as holds, ...
       ... and thus should be able to receive hold support.

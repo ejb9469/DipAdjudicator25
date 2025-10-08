@@ -31,17 +31,17 @@ public class Judge {
     }
 
 
-    /**
-     * <u>Global vars for the `resolve()` func:</u><br>
+    /*
+     * Global vars for the `resolve()` func:</u><br>
      *      ~ <i>(List of Orders)</i> `<i><b>cycle</b></i>` contains the contents of a recursion cycle, if it exists (empty otherwise)<br>
      *      ~ <i>int</i> `<i><b>recursionHits</b></i>` represents the cyclic dependency depth<br>
      *      ~ <i>bool</i> `<i><b>uncertain</b></i>` is the "guessing variable" --
      *          when true, indicates resolve() returns a result based on uncertain information
      *          ... (i.e. is guessing)
      */
-    private List<Order> cycle = new ArrayList<>();
+    private List<Order> cycle         = new ArrayList<>();
     private int         recursionHits = 0;
-    private boolean     uncertain = false;
+    private boolean     uncertain     = false;
 
 
     /**
@@ -81,7 +81,7 @@ public class Judge {
      *
      * @author Evan B
      */
-    private boolean adjudicate(Order order, boolean optimistic) {
+    protected boolean adjudicate(Order order, boolean optimistic) {
 
         // Handle MOVE orders
         if (order.orderType == OrderType.MOVE) {
@@ -233,23 +233,19 @@ public class Judge {
 
         }
 
-        // Handle RETREAT & PIFF orders (retreats phase)
-        else if (order.orderType == OrderType.RETREAT) {
+        else if (order.orderType == null) {
 
-            // Retreated off the board; 'piffed'
-            // technically successful order; SPECIAL CASE, will be handled at the unit removal level
-            if (order.pos1 == null)
-                return true;
-
-            // The retreat fails if & only if there is another (dislodged) unit retreating there
-            Collection<Order> bouncers = Orders.locateUnitsMovingToPosition(order.pos1, orders);
-            return (bouncers.size() > 1);
+            throw new IllegalStateException(String.format(
+                    "`%s:adjudicate(...)` - `null` OrderType: only Spring & Fall Orders are directly handled by `%s`:\t(%s, %s, %s, %s)\n",
+                    this.getClass().getSimpleName(), this.getClass().getSimpleName(), OrderType.MOVE.name(), OrderType.HOLD.name(), OrderType.SUPPORT.name(), OrderType.CONVOY.name()));
 
         }
 
         // Unknown / impossible order type, throw exception
-        System.err.println("LINE 158 :: Judge.java");
-        throw new IllegalStateException("Impossible OrderType");
+        throw new IllegalStateException(String.format(
+                "`%s:adjudicate(...)` - Impossible OrderType \"%s\": only Spring & Fall Orders are directly handled by `%s`:\t(%s, %s, %s, %s)\n",
+                this.getClass().getSimpleName(), order.orderType, this.getClass().getSimpleName(), OrderType.MOVE.name(), OrderType.HOLD.name(), OrderType.SUPPORT.name(), OrderType.CONVOY.name())
+        );
 
     }
 
@@ -365,7 +361,7 @@ public class Judge {
 
         boolean areAllMovers = true;
         for (Order order : cyclicalOrders) {
-            if (order.orderType != OrderType.MOVE) {
+            if (order.orderType != OrderType.MOVE && order.orderType != OrderType.RETREAT) {
                 areAllMovers = false;
                 break;
             }
@@ -418,17 +414,22 @@ public class Judge {
      * @param orders Collection of all Orders to test against
      * @return Whether `moveOrder`'s path is successful; `moveOrder` touches its destination
      */
-    private boolean pathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> orders) {
+    protected boolean pathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
+        if (moveOrder.orderType != OrderType.MOVE)
+            throw new IllegalArgumentException(String.format("Non-Move Order supplied for `pathSuccessful(...)`: %s", moveOrder));
+
+        // Below will implicitly reject pos0->pos0 moves, among other invalid orders
         if (!Orders.orderIsValid(moveOrder))
             return false;
 
-        boolean treatAsConvoyingArmy = (moveOrder.unitType == UnitType.ARMY &&
+        boolean isConvoyingArmy = (moveOrder.unitType == UnitType.ARMY &&
                 Orders.adjacentMatchingConvoyFleetExists(moveOrder, orders));
 
-        if (!treatAsConvoyingArmy) {
-            return moveOrder.pos0.isAdjacentTo(moveOrder.pos1);  // Try land route, no convoys detected
-        } else {
+        boolean isCoastCrawlingFleet = (moveOrder.unitType == UnitType.FLEET &&
+                moveOrder.pos0.geography == Geography.COASTAL && moveOrder.pos1.geography == Geography.COASTAL);
+
+        if (isConvoyingArmy) {
 
             // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
             // If the first route is unsuccessful, begin looping for possible convoy routes
@@ -470,6 +471,22 @@ public class Judge {
 
             }
 
+        } else if (isCoastCrawlingFleet) {
+
+            // Fleets cannot convoy, so they must be literally adjacent
+            if (!moveOrder.pos0.isAdjacentTo(moveOrder.pos1))
+                return false;
+
+            return Province.adjacentBySea(moveOrder.pos0, moveOrder.pos1);
+
+        } else {
+
+            // Armies cannot traverse split coasts
+            if (moveOrder.unitType == UnitType.ARMY && moveOrder.pos1.coastType == CoastType.SPLIT)
+                return false;
+
+            return moveOrder.pos0.isAdjacentTo(moveOrder.pos1);  // Try land route, no convoys detected
+
         }
 
     }
@@ -485,7 +502,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return # of successful Support Orders in `orders` attributed to `order`
      */
-    private int tallySuccessfulSupports(Order order, boolean optimistic, Collection<Order> orders) {
+    protected int tallySuccessfulSupports(Order order, boolean optimistic, Collection<Order> orders) {
 
         int supports = 0;
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
@@ -541,7 +558,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return # of successful Support Orders in `orders` attributed to `order`, which are not coming from `forbiddenOwner`
      */
-    private int tallySuccessfulSupportsForeign(Order order, boolean optimistic, Nation forbiddenOwner, Collection<Order> orders) {
+    protected int tallySuccessfulSupportsForeign(Order order, boolean optimistic, Nation forbiddenOwner, Collection<Order> orders) {
 
         int supports = 0;
         if (order.orderType == OrderType.MOVE) {  // SUPPORT to MOVE
@@ -597,7 +614,7 @@ public class Judge {
      * @param opponents Collection of opposing Movers ("opponents")
      * @return True if the Attack Strength of `moveOrder` is greater than the Prevent Strengths of all Move Orders in Collection `opponents` -- false otherwise
      */
-    private boolean champion(Order moveOrder, int attackStrength, boolean optimistic, Collection<Order> opponents) {
+    protected boolean champion(Order moveOrder, int attackStrength, boolean optimistic, Collection<Order> opponents) {
 
         // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
         // `champion` will be true if our Move order is the greatest (with no ties)
@@ -628,7 +645,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return Attack Strength of `moveOrder`
      */
-    private int calculateAttackStrength(Order moveOrder, boolean optimistic, boolean headToHead, Collection<Order> orders) {
+    protected int calculateAttackStrength(Order moveOrder, boolean optimistic, boolean headToHead, Collection<Order> orders) {
 
         if (moveOrder.orderType != OrderType.MOVE)
             throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculateAttackStrength(...)`: %s", moveOrder));
@@ -664,7 +681,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return Defend Strength of `headToHeadMoveOrder`
      */
-    private int calculateDefendStrength(Order headToHeadMoveOrder, boolean optimistic, Collection<Order> orders) {
+    protected int calculateDefendStrength(Order headToHeadMoveOrder, boolean optimistic, Collection<Order> orders) {
 
         if (headToHeadMoveOrder.orderType != OrderType.MOVE)
             // (Does not check if the Move Order is indeed Head-to-Head)
@@ -684,7 +701,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return Prevent Strength of `moveOrder`
      */
-    private int calculatePreventStrength(Order moveOrder, boolean optimistic, Collection<Order> orders) {
+    protected int calculatePreventStrength(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
         if (moveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Non-Head-to-Head
             throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculatePreventStrength(...)`: %s", moveOrder));
@@ -713,7 +730,7 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return Hold Strength of Province `pos`
      */
-    private int calculateHoldStrength(Province pos, boolean optimistic, Collection<Order> orders) {
+    protected int calculateHoldStrength(Province pos, boolean optimistic, Collection<Order> orders) {
 
         Order occupant = Orders.locateUnitAtPosition(pos, orders);
         if (occupant == null)
