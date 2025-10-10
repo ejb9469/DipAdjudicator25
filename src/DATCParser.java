@@ -71,7 +71,7 @@ public class DATCParser implements TestCaseParser {
                 Province pos1, pos2;
                 if (orderType == OrderType.SUPPORT || orderType == OrderType.CONVOY) {
                     // Set pos1 (non-null), and pos2 (could be null)
-                    boolean containsMove = line.split(orderType.name().substring(1).toLowerCase())[1].contains("-");
+                    boolean containsMove = line.split(orderType.name().substring(1).toLowerCase())[1].contains(" - ");
                     StringBuilder pos1Str = new StringBuilder();
                     if (!containsMove) {  // SUPPORT TO HOLD
                         for (int i = 4+extraIndex; i < descriptorParts.length; i++) {
