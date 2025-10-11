@@ -1,4 +1,6 @@
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 /**
@@ -34,14 +36,14 @@ public abstract class Orders {
                     return false;
                 else if (order.unitType == UnitType.FLEET && !order.pos0.isAdjacentTo(order.pos1))
                     // Fleets cannot skip provinces (i.e. cannot be convoyed)
+                    // This statement should also prevent MOVEs like F Mar - Spa/nc
+                    // (but a move like F Mar S Gas - Spa/nc should succeed b/c of the SUPPORT conditions below)
                     return false;
-                else if (order.unitType == UnitType.FLEET && !Province.adjacentBySea(order.pos0, order.pos1))
-                    // Fleets must be "adjacent by sea" when coast-crawling
-                    return false;
-                return true;
+                else
+                    return true;
             }
 
-            case SUPPORT, CONVOY -> {
+            case SUPPORT, CONVOY -> {  // TODO: Separate Supports from Convoys (if/once they can no longer be handled identically)
                 // Moves from Pos1-->Pos1 are illegal,
                 // and support-holds are formatted with `pos2` == null
                 if (order.pos1 == order.pos2)
@@ -50,10 +52,10 @@ public abstract class Orders {
                 // Fleets issuing supports can break split-coast adjacency rules, so use the appropriate helper method
                 // Fleets must also be "adjacent by sea" when coast-crawling
                 // ... [`.isAdjacentToIgnoreSplitCoast(...)`]
-                if (order.pos2 == null)  // First handle support holds...
+                if (order.pos2 == null)  // Handle support holds...
                     return (order.pos0.isAdjacentToIgnoreSplitCoast(order.pos1) &&
                             (order.unitType != UnitType.FLEET || Province.adjacentBySea(order.pos0, order.pos1)));
-                else  // ...Then handle support-moves
+                else  // ...Handle support-moves
                     return (order.pos0.isAdjacentToIgnoreSplitCoast(order.pos2) &&
                             (order.unitType != UnitType.FLEET || Province.adjacentBySea(order.pos0, order.pos2)));
             }
@@ -87,7 +89,7 @@ public abstract class Orders {
      * @param orders Collection of Orders
      * @return A Collection of the Orders removed from `orders`
      */
-    // MUTATOR
+    // MUTATOR \\
     public static Collection<Order> cleanse(Collection<Order> orders) {
 
         Collection<Order> invalidOrders = new ArrayList<>();
@@ -107,7 +109,7 @@ public abstract class Orders {
      * @param orders Collection of Orders to search
      * @return New Collection of Orders: results of pruning `orders` for Orders of `orderType`
      */
-    // NOT A MUTATOR
+    // NOT A MUTATOR \\
     public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
 
         Collection<Order> newOrders = new ArrayList<>();
@@ -132,6 +134,8 @@ public abstract class Orders {
         for (Order order : orders) {
             if (order.pos0 == pos)
                 return order;
+            else if (Province.equalsIgnoreCoast(order.pos0, pos))  // e.g. Spa, Spa/nc, & Spa/sc are all "one province" for battles purposes
+                return order;
         }
 
         return null;
@@ -155,6 +159,8 @@ public abstract class Orders {
 
             if (order.pos1 == pos)
                 ordersOut.add(order);
+            else if (Province.equalsIgnoreCoast(order.pos1, pos))  // e.g. Spa, Spa/nc, & Spa/sc are all "one province" for battles purposes
+                ordersOut.add(order);
 
         }
 
@@ -174,10 +180,16 @@ public abstract class Orders {
             throw new IllegalArgumentException(String.format("`locateHeadToHead()` called on non-move Order: %s", moveOrder));
 
         for (Order order2 : orders) {
-            if (order2.equals(moveOrder) || order2.orderType != OrderType.MOVE)
+
+            if (order2.equals(
+                    moveOrder) || order2.orderType != OrderType.MOVE)
                 continue;
             if (order2.pos1 == moveOrder.pos0 && order2.pos0 == moveOrder.pos1)
                 return order2;
+            else if (Province.equalsIgnoreCoast(order2.pos1, moveOrder.pos0) &&
+                    Province.equalsIgnoreCoast(order2.pos0, moveOrder.pos1))
+                return order2;
+
         }
 
         return null;

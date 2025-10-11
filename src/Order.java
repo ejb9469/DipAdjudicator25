@@ -22,6 +22,10 @@ public class Order {
     protected boolean verdict;
     protected boolean visited;
 
+    protected boolean suppressH2HAdjudication = false;
+
+    // REMEMBER to update `Order.resetMetaFlags()` when adding new metadata flags
+
 
     public Order(Nation owner, UnitType unitType, Province origin, OrderType orderType, Province pos1, Province pos2, boolean dislodged) {
         this.owner = owner;
@@ -50,6 +54,14 @@ public class Order {
         this.resolved = order2.resolved;
         this.verdict = order2.verdict;
         this.visited = order2.visited;
+    }
+
+
+    protected void resetMetaFlags() {
+        this.resolved = false;
+        this.verdict = false;
+        this.visited = false;
+        this.suppressH2HAdjudication = false;
     }
 
 

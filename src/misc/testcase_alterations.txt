@@ -1,13 +1,41 @@
 6.A.10. SUPPORT ON UNREACHABLE DESTINATION NOT POSSIBLE ::
     ~ Technically, the support order should fail due to its invalidity, but the program calls it successful.
-    ~ It still does not count the support in any way, so I will leave the interpretation of this Test Case up to a higher level
+    ~ It still does not count the support, so I will leave the interpretation of this Test Case up to a higher level (ATM)
+
+
+6.B.02. MOVING WITH UNSPECIFIED COAST WHEN COAST IS NOT NECESSARY ::
+    ~ The DATC indicates this as a matter of preference, and this adjudicator works better by ruling the other way; simply pretending squares like...
+        ... Spa, Bul, and Stp are inland provinces, with 2+ coast tentacles attached. It's spaghetti... but sometimes you shouldn't question the pasta
+
+
+6.B.07. SUPPORTING OWN UNIT WITH UNSPECIFIED COAST ::
+    ~ The DATC indicates this as a matter of preference, and this adjudicator works better by ruling the other way: ...
+        ... "F Por S (F) MAO - Spa" will immediately fail (-> false) b/c it does not have a corresponding order.
+        ... What "should" be the corresponding order specifies "Spa/nc", which is a mismatch
+    ~ It should be noted that if the French moves are changed to *both* specify "Spa" (no coast), the support will not fail, ...
+        ... but the Move will, (presumably) because it (a fleet) is attempting to navigate to an "inland" province (Spa).
+
+
+6.B.08. SUPPORTING WITH UNSPECIFIED COAST WHEN ONLY ONE COAST IS POSSIBLE ::
+    ~ The DATC indicates the French support should be followed despite its ambiguity, because it is a "poorly written order".
+    ~ The DATC has elsewhere indicated matters of order writing judgement are a matter of preference. I will rule the other way.
+
 
 6.D.28. IMPOSSIBLE MOVE AND SUPPORT ::
     ~ According to the DATC issue 4.E.1 (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1), all invalid orders (incl. moves) should be interpreted as holds, ...
-      ... and thus should be able to receive hold support.
+        ... and thus should be able to receive hold support.
     ~ Many sites (such as Backstabbr) do not respect this rule afaik, and it makes most sense to me to 'void' the order (i.e. it cannot receive support), ...
-      ... rather than 'allowing' it to hold. (In the base `Judge` class)
+        ... rather than 'allowing' it to hold. (In the base `Judge` class)
     ~ However, the `StrictJudge` subclass should follow the DATC interpretation -- i.e. set all invalid orders to holds
+
+
+6.D.29. MOVE TO IMPOSSIBLE COAST AND SUPPORT ::
+    ~ Idem. (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1)
+
+
+6.D.30. MOVE WITHOUT COAST AND SUPPORT ::
+    ~ Idem. (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1)
+    ~ Note: The Russian move "F Con - Bul" (afaik) fails b/c `Province.Bul` (no coast) is labeled as `Geography.INLAND`
 
 
 6.D.31. A TRICKY IMPOSSIBLE SUPPORT ::
@@ -15,7 +43,8 @@
       ... because the only way the move "A Rum - Arm" succeeds is via convoy, and "F BLA" is the only possible convoy route
     ~ This sort of optimization seems unnecessary, and more importantly it may introduce more problems than it solves. So I am leaving it out.
     ~ The DATC Test Case 6.D.31 snippet states that this is relevant for computer programs that show only legal moves...
-      ... This seems like the sort of functionality best left to an upper level, or `StrictJudge`.
+        ... This seems like the sort of functionality best left to an upper level, or `StrictJudge`.
+
 
 6.D.32. A MISSING FLEET ::
     ~ Idem. (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1)

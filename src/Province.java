@@ -11,44 +11,53 @@ public enum Province implements StrictState {
     Tri("Trieste", Geography.COASTAL, true, Nation.AUSTRIA, 7, false, false),
     Tyr("Tyrolia", false, false),
     Vie("Vienna", Geography.INLAND, true, Nation.AUSTRIA),
+
     Cly("Clyde", Geography.COASTAL, false, null, 3, false, false),
     Edi("Edinburgh", Geography.COASTAL, true, Nation.ENGLAND, 2, false, false),
     Lvp("Liverpool", Geography.COASTAL, true, Nation.ENGLAND, 4 ,false, false),
     Lon("London", Geography.COASTAL, true, Nation.ENGLAND, 2, false, false),
     Wal("Wales", Geography.COASTAL, false, null, 3, false, false),
     Yor("Yorkshire", Geography.COASTAL, false, null, 1, false, false),
+
     Bre("Brest", Geography.COASTAL, true, Nation.FRANCE, 17, false, false),
     Bur("Burgundy", false, false),
     Gas("Gascony", Geography.COASTAL, false, null, 16, false, false),
     Mar("Marseilles", Geography.COASTAL, true, Nation.FRANCE, 14, false, false),
     Par("Paris", Geography.INLAND, true, Nation.FRANCE),
     Pic("Picardy", Geography.COASTAL, false, null, 18, false, false),
+
     Ber("Berlin", Geography.COASTAL, true, Nation.GERMANY, 22, false, false),
     Kie("Kiel", Geography.COASTAL, true, Nation.GERMANY, 21, false, false),
     Mun("Munich", Geography.INLAND, true, Nation.GERMANY),
     Pru("Prussia", Geography.COASTAL, false, null, 23, false, false),
     Ruh("Ruhr", false, false),
     Sil("Silesia", false, false),
+
     Apu("Apulia", Geography.COASTAL, false, null, 9, false, false),
     Nap("Naples", Geography.COASTAL, true, Nation.ITALY, 10, false, false),
     Pie("Piedmont", Geography.COASTAL, false, null, 13, false, false),
     Rom("Rome", Geography.COASTAL, true, Nation.ITALY, 11, false, false),
     Tus("Tuscany", Geography.COASTAL, false, null, 12, false, false),
     Ven("Venice", Geography.COASTAL, true, Nation.ITALY, 8, false, false),
+
     Lvn("Livonia", Geography.COASTAL, false, null, 24, false, false),
     Mos("Moscow", Geography.INLAND, true, Nation.RUSSIA),
     Sev("Sevastopol", Geography.COASTAL, true, Nation.RUSSIA, 6, false, false),
-    Stp("St. Petersburg", Geography.COASTAL, true, Nation.RUSSIA, 25, false, false, null),
+    Stp("St Petersburg", Geography.INLAND, true, Nation.RUSSIA, 25, false, false, null),
+    // ^^ Not truly "Inland" ^^
     Ukr("Ukraine", false, false),
     War("Warsaw", Geography.INLAND, true, Nation.RUSSIA),
+
     Ank("Ankara", Geography.COASTAL, true, Nation.TURKEY, 4 , false, false),
     Arm("Armenia", Geography.COASTAL, false, null, 5, false, false),
     Con("Constantinople", Geography.COASTAL, true, Nation.TURKEY, 3, true, false, null),
     Smy("Smyrna", Geography.COASTAL, true, Nation.TURKEY, 2, false, false),
     Syr("Syria", Geography.COASTAL, false, null, 1, false, false),
+
     Alb("Albania", Geography.COASTAL, false, null, 6, false, false),
     Bel("Belgium", Geography.COASTAL, true, null, 19, false, false),
-    Bul("Bulgaria", Geography.COASTAL, true, null, 4, false, false, null),
+    Bul("Bulgaria", Geography.INLAND, true, null, 4, false, false, null),
+    // ^^ Not truly "Inland" ^^
     Den("Denmark", Geography.COASTAL, true, null, 22, true, false, null),
     Fin("Finland", Geography.COASTAL, false, null, 24, false, false),
     Gre("Greece", Geography.COASTAL, true, null, 5, false, false),
@@ -58,9 +67,11 @@ public enum Province implements StrictState {
     Por("Portugal", Geography.COASTAL, true, null, 16, false, false),
     Rum("Rumania", Geography.COASTAL, true, null, 5, false, false),
     Ser("Serbia", false, true),
-    Spa("Spain", Geography.COASTAL, true, null, 15, false, false, null),
+    Spa("Spain", Geography.INLAND, true, null, 15, false, false, null),
+    // ^^ Not truly "Inland" ^^
     Swe("Sweden", Geography.COASTAL, true, null, 23, false, false),
     Tun("Tunis", Geography.COASTAL, true, null, 1, false, false),
+
     ADR("Adriatic Sea", true),
     AEG("Aegean Sea", true),
     BAL("Baltic Sea", true),
@@ -80,16 +91,22 @@ public enum Province implements StrictState {
     SKA("Skagerrak", true),
     TYS("Tyrrhenian Sea", true),
     WES("Western Mediterranean", true),
-    StpNC("St. Petersburg (north coast)", Geography.COASTAL, true, Nation.RUSSIA, Province.Stp.coastId, false, true, Province.Stp, "nc"),
-    StpSC("St. Petersburg (south coast)", Geography.COASTAL, true, Nation.RUSSIA, Province.Stp.coastId, false, true, Province.Stp, "sc"),
-    SpaNC("Spain (north coast)", Geography.COASTAL, true, null, Province.Spa.coastId, false, true, Province.Spa, "nc"),
-    SpaSC("Spain (south coast)", Geography.COASTAL, true, null, Province.Spa.coastId, false, true, Province.Spa, "sc"),
-    BulEC("Bulgaria (east coast)", Geography.COASTAL, true, null, Province.Bul.coastId, false, true, Province.Bul, "ec"),
-    BulSC("Bulgaria (south coast)", Geography.COASTAL, true, null, Province.Bul.coastId, false, true, Province.Bul, "sc");
+
+    StpNC("St Petersburg(nc)", Geography.COASTAL, true, Nation.RUSSIA, 25, false, true, Province.Stp, "nc"),
+    StpSC("St Petersburg(sc)", Geography.COASTAL, true, Nation.RUSSIA, 25, false, true, Province.Stp, "sc"),
+    SpaNC("Spain(nc)", Geography.COASTAL, true, null, 15, false, true, Province.Spa, "nc"),
+    SpaSC("Spain(sc)", Geography.COASTAL, true, null, 15, false, true, Province.Spa, "sc"),
+    BulEC("Bulgaria(ec)", Geography.COASTAL, true, null, 4, false, true, Province.Bul, "ec"),
+    BulSC("Bulgaria(sc)", Geography.COASTAL, true, null, 4, false, true, Province.Bul, "sc"),
+
+    // The addition of the 'dummy' province Switzerland (`Province.Swi`), who borders nobody, is necessary because, for whatever reason, ...
+    // ... the compiler hates the last entry in the `adjacencyMap`, and replaces its key with the null reference...
+    // (It is also nice to simply have a dummy province value, for posterity)
+    // (Future commits may choose to alter the identity of the dummy province, if (e.g.) a variant chooses to include a passable `Province.Swi` tile)
+    Swi("Switzerland", false, false);
 
 
-
-    public static final char    SUFFIX_DELIM = '/';  // e.g. "Bul/ec"
+    public static final char SUFFIX_DELIM = '/';  // e.g. "Bul/ec"
 
     // `adjacencyMap` and `aliasesMap` autopopulate at runtime, once for every new Province constant
     private static Map<Province, Province[]>    adjacencyMap;
@@ -217,7 +234,8 @@ public enum Province implements StrictState {
      * Determines whether 'this' Province is adjacent to another given Province, <i>while ignoring <b>split coast rules</b></i><br>
      * The function is very lenient, and tries all combinations of the 2 Provinces & their parents<br><br>
      *
-     * <b>NOTE:</b> Moves such as "F Tus S Tri - Ven" will still fail; only <i>split</i> coast rules are bypassed. e.g "F BOT S BAR - Stp/nc"
+     * <b>NOTE:</b> Orders such as "F Tus S Tri - Ven" will still fail; only <i>split</i> coast rules are bypassed. e.g "F BOT S BAR - Stp/nc"<br><br>
+     * <b>NOTE:</b> However, orders such as "F Spa/nc S LYO" will fail, but moves like "F LYO S Spa/nc" will succeed -- in this regard, preference is given to `pos1` over `this`
      *
      * @param pos1 'Other' Province
      * @return Whether this Province is adjacent to Province `pos1`, <i>ignoring split coast rules!!</i>
@@ -239,12 +257,17 @@ public enum Province implements StrictState {
             else
                 return genericAdjacency;
 
-        } else if (this.coastType == CoastType.SPLIT) {  // -> [`pos1.coastType` != SPLIT]
+        /*} else if (this.coastType == CoastType.SPLIT) {  // -> [`pos1.coastType` != SPLIT]
+
+            // We omit this block b/c any relation from a unit in Spa/nc -> LYO is invalid, ...
+            // ... but not necessarily the other way around. (i.e. default to generic adjacency)
 
             if (this.parent != null)
                 return this.parent.isAdjacentTo(pos1);
             else
                 return genericAdjacency;
+
+        */
 
         } else if (pos1.coastType == CoastType.SPLIT) {  // -> [`this.coastType` != SPLIT]
 
@@ -265,7 +288,9 @@ public enum Province implements StrictState {
 
     public static boolean adjacentBySea(Province pos0, Province pos1) {
 
-        boolean genericAdjacency = pos0.isAdjacentTo(pos1);
+        // e.g. Mar & Spa/nc are considered "adjacent by sea"
+        // This behavior results from calling `IATIgnoreSplitCoast(...)` instead of base `IAT`
+        boolean genericAdjacency = pos0.isAdjacentToIgnoreSplitCoast(pos1);
 
         // Cannot be adjacent by sea if not also adjacent by land
         if (!genericAdjacency)
@@ -273,9 +298,27 @@ public enum Province implements StrictState {
         // Use generic adjacency (now `true`) if no coast-crawling is required
         else if (pos0.geography != Geography.COASTAL || pos1.geography != Geography.COASTAL)
             return true;
+        else  // Handle coast-crawling -- coast IDs must be adjacent to sea neighbors
+            return Math.abs(pos0.coastId - pos1.coastId) == 1;
 
-        // Handle coast-crawling -- coast IDs must be adjacent to sea neighbors
-        return Math.abs(pos0.coastId - pos1.coastId) == 1;
+    }
+
+    public static boolean equalsIgnoreCoast(Province pos0, Province pos1) {
+
+        if (pos0 == pos1)
+            return true;
+
+        if (pos0 == null || pos1 == null)
+            return false;
+
+        if (pos0.parent != null && pos1.parent != null)
+            return pos0.parent == pos1.parent;
+        else if (pos0.parent != null)
+            return pos0.parent == pos1;
+        else if (pos1.parent != null)
+            return pos0 == pos1.parent;
+        else
+            return false;
 
     }
 
@@ -376,6 +419,11 @@ public enum Province implements StrictState {
         adjacencyMap.put(Province.SpaSC, new Province[]{Province.MAO, Province.Mar, Province.LYO, Province.WES, Province.Por});
         adjacencyMap.put(Province.BulEC, new Province[]{Province.Rum, Province.BLA, Province.Con});
         adjacencyMap.put(Province.BulSC, new Province[]{Province.Con, Province.AEG, Province.Gre});
+
+        // The addition of Switzerland (`Province.Swi`) is necessary because, for whatever reason, ...
+        // ... the compiler hates the last entry in the map, and replaces its key with the null reference...
+        // (See the definition of `Province.Swi` for more info)
+        adjacencyMap.put(Province.Swi, new Province[]{});
 
         return adjacencyMap;
 

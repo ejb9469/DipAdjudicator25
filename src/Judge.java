@@ -39,9 +39,9 @@ public class Judge {
      *          when true, indicates resolve() returns a result based on uncertain information
      *          ... (i.e. is guessing)
      */
-    private List<Order> cycle         = new ArrayList<>();
-    private int         recursionHits = 0;
-    private boolean     uncertain     = false;
+    private List<Order> cycle           = new ArrayList<>();
+    private int         recursionHits   = 0;
+    private boolean     uncertain       = false;
 
 
     /**
@@ -89,7 +89,10 @@ public class Judge {
             int attackStrength;
 
             Order headToHead = Orders.locateHeadToHead(order, this.orders);
-            if (headToHead != null) {  // HEAD-TO-HEAD Battle
+
+            // HEAD-TO-HEAD Battle
+            if (headToHead != null &&
+                !order.suppressH2HAdjudication) {
 
                 // Calculate Move order's ATTACK STRENGTH
                 // [Must be greater than... a. the Defend Strength of the opposing mover, and
@@ -111,28 +114,53 @@ public class Judge {
                     // returns true if our Move order is the greatest (with no ties)
                     return champion(order, attackStrength, optimistic, otherOpponents);
 
-                } else if (Orders.adjacentMatchingConvoyFleetExists(order, orders) &&
-                        Orders.adjacentMatchingConvoyFleetExists(headToHead, orders)) {
+                } else if (Orders.adjacentMatchingConvoyFleetExists(order, orders) ||
+                           Orders.adjacentMatchingConvoyFleetExists(headToHead, orders)) {
+
                     // Lost to opponent mover, the move will fail unless there are Convoy-Swap hijinx
 
                     // Test for Convoy-Swaps (very specific edge case)
-                    // Convoy-Swaps will succeed if-and-only-if:
-                    //      1) 'This' move is successful if re-evaluated as a NON-HEAD-TO-HEAD Battle; i.e. ...
-                    //              ... a) The ATTACK STRENGTH is greater than the Hold Strength of the area...
-                    //                  b) ...and the Prevent Strength of all movers competing for the same area
-                    //      2) The 'other' move is also successful -- i.e. it also satisfies condition #1
-                    boolean otherMoveSuccessful = resolve(headToHead, optimistic);
-                    int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
+                    // Convoy-Swaps will succeed if-and-only-if all below conditions are met:
+                    //      1) The other move EITHER succeeds on its own merits, OR we deduce the H2H Battle restrictions could be sabotaging the other move's success verdict
+                    //      2) Our principal Order "is champion"; beats out all other attacks to its destination
+                    //      3) The other move is ALSO champion of its destination
 
-                    return otherMoveSuccessful &&
-                            (attackStrength > destHoldStrength) &&
-                            champion(order, attackStrength, optimistic, otherOpponents);
+                    boolean otherMoveSuccessful = resolve(headToHead, optimistic);
+                    //int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
+                    int disguisedHeadToHeadAttackStrength = calculateAttackStrength(headToHead, optimistic, false, orders);
+                    int currentHeadToHeadAttackStrength   = calculateAttackStrength(headToHead, optimistic, true, orders);
+
+                    int headToHeadAttackStrengthDiscrepancy =
+                            (disguisedHeadToHeadAttackStrength - currentHeadToHeadAttackStrength);
+
+                    boolean swapSuccess = (otherMoveSuccessful || headToHeadAttackStrengthDiscrepancy > 0) &&
+                                           //(attackStrength > destHoldStrength) &&
+                                           champion(order, attackStrength, optimistic, otherOpponents) &&
+                                           champion(headToHead, disguisedHeadToHeadAttackStrength, optimistic,
+                                                    Orders.locateUnitsMovingToPosition(headToHead.pos1, orders));
+
+                    // If the Convoy-Swap appears successful, allow `headToHead` a second chance at another, different resolution later, ...
+                    // ... via a SPECIAL FLAG `Order.suppressH2HAdjudication` (wysiwyg) ...
+                    // ... Since: A) this H2H battle is no longer an obstacle, and B) there can only be one H2H battle per (set of) Order(s)
+                    // For good measure, also tick our principal Order's `suppressH2HAdjudication` flag
+                    // Note: THIS IS A 'SHORTCUT' AND VIOLATES THE DIVISION OF RESPONSIBILITY BTWN. `ADJUDICATE()` AND `RESOLVE()`
+
+                    if (swapSuccess) {
+                        headToHead.resolved                 = false;
+                        headToHead.suppressH2HAdjudication  = true;
+                        order.suppressH2HAdjudication       = true;
+                    }
+
+                    return swapSuccess;
 
                 } else {  // Cannot overwhelm nor swap with the Head-to-Head adversary
                     return false;
                 }
 
-            } else {  // NON-HEAD-TO-HEAD Battle
+            }
+
+            // NON-HEAD-TO-HEAD Battle
+            else {
 
                 // Calculate Move order's ATTACK STRENGTH
                 // [Must be greater than... a. the Hold Strength of the area, and
@@ -170,7 +198,8 @@ public class Judge {
                 if (order2.equals(order) || order2.orderType != OrderType.MOVE)
                     continue;
 
-                if (order2.pos1 != order.pos0)
+                // .equalsIC() is used b/c supports can be cut from either coast
+                if (!Province.equalsIgnoreCoast(order2.pos1, order.pos0))
                     continue;
 
                 if (pathSuccessful(order2, optimistic, orders) &&
@@ -180,6 +209,7 @@ public class Judge {
                 } else if (resolve(order2, !optimistic)) {
                     return false;
                 }
+                // else: below
 
             }
 
@@ -205,7 +235,7 @@ public class Judge {
                             // There exists a Move to & from non-adjacent squares that matches this convoy's specifications,
                             // and this convoy is now dislodged
                             // Therefore, the move cannot possibly go through
-                            // This is a 'shortcut' and violates the division of responsibility btwn. `adjudicate()` and `resolve()`
+                            // Note: THIS IS A 'SHORTCUT' AND VIOLATES THE DIVISION OF RESPONSIBILITY BTWN. `ADJUDICATE()` AND `RESOLVE()`
                             matchingMoveOrder.resolved = true;
                             matchingMoveOrder.verdict = false;
                         }
@@ -234,18 +264,17 @@ public class Judge {
         }
 
         else if (order.orderType == null) {
-
             throw new IllegalStateException(String.format(
                     "`%s:adjudicate(...)` - `null` OrderType: only Spring & Fall Orders are directly handled by `%s`:\t(%s, %s, %s, %s)\n",
                     this.getClass().getSimpleName(), this.getClass().getSimpleName(), OrderType.MOVE.name(), OrderType.HOLD.name(), OrderType.SUPPORT.name(), OrderType.CONVOY.name()));
-
         }
 
-        // Unknown / impossible order type, throw exception
-        throw new IllegalStateException(String.format(
-                "`%s:adjudicate(...)` - Impossible OrderType \"%s\": only Spring & Fall Orders are directly handled by `%s`:\t(%s, %s, %s, %s)\n",
-                this.getClass().getSimpleName(), order.orderType, this.getClass().getSimpleName(), OrderType.MOVE.name(), OrderType.HOLD.name(), OrderType.SUPPORT.name(), OrderType.CONVOY.name())
-        );
+        else {
+            // Unknown / impossible order type, throw exception
+            throw new IllegalStateException(String.format(
+                    "`%s:adjudicate(...)` - Impossible OrderType \"%s\": only Spring & Fall Orders are directly handled by `%s`:\t(%s, %s, %s, %s)\n",
+                    this.getClass().getSimpleName(), order.orderType, this.getClass().getSimpleName(), OrderType.MOVE.name(), OrderType.HOLD.name(), OrderType.SUPPORT.name(), OrderType.CONVOY.name()));
+        }
 
     }
 
@@ -587,6 +616,7 @@ public class Judge {
         } else {  // SUPPORT to HOLD
 
             for (Order order2 : orders) {
+
                 if (order2.equals(order) || order2.orderType != OrderType.SUPPORT ||
                         order2.owner == forbiddenOwner)
                     continue;
