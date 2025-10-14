@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Abstract class of static utility functions re: Convoy and Convoy pathing functionality
  */
-public abstract class Convoys extends Orders {
+public abstract class Convoys /*extends Orders*/ {
 
     /**
      * Draws one possible convoy path for a given Move Order

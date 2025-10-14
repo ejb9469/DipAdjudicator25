@@ -20,7 +20,7 @@ public abstract class Orders {
         switch (order.orderType) {
 
             case MOVE -> {
-                if (order.pos0 == order.pos1)
+                if (Province.equalsIgnoreCoast(order.pos0, order.pos1))
                     // Units cannot order to their own location
                     // Locations in `Province` are not adjacent to themselves regardless,
                     // ... but for posterity's sake, we deem these moves illegal
@@ -43,12 +43,12 @@ public abstract class Orders {
                     return true;
             }
 
-            case SUPPORT, CONVOY -> {  // TODO: Separate Supports from Convoys (if/once they can no longer be handled identically)
+            case SUPPORT -> {
                 // Moves from Pos1-->Pos1 are illegal,
                 // and support-holds are formatted with `pos2` == null
-                if (order.pos1 == order.pos2)
+                if (Province.equalsIgnoreCoast(order.pos1, order.pos2))
                     return false;
-                // !! Support & convoy orders must be adjacent to their dest. location !!
+                // !! Support orders must be adjacent to their dest. location !!
                 // Fleets issuing supports can break split-coast adjacency rules, so use the appropriate helper method
                 // Fleets must also be "adjacent by sea" when coast-crawling
                 // ... [`.isAdjacentToIgnoreSplitCoast(...)`]
@@ -58,6 +58,20 @@ public abstract class Orders {
                 else  // ...Handle support-moves
                     return (order.pos0.isAdjacentToIgnoreSplitCoast(order.pos2) &&
                             (order.unitType != UnitType.FLEET || Province.adjacentBySea(order.pos0, order.pos2)));
+            }
+
+            case CONVOY -> {
+                // Moves from Pos1-->Pos1 are illegal,
+                // and convoys must have both 'pos' fields set
+                if (order.pos1 == null || order.pos2 == null ||
+                        Province.equalsIgnoreCoast(order.pos1, order.pos2))
+                    return false;
+                // Convoys must be ordered from a FLEET ON WATER
+                if (order.unitType != UnitType.FLEET || order.pos0.geography != Geography.WATER)
+                    return false;
+                // Convoys do not necessarily need to be adjacent to the convoy source, nor the convoy destination
+                // ... Due to the existence of the multiple-convoy 'chains' mechanic (not handled here)
+                return true;
             }
 
             case HOLD -> {

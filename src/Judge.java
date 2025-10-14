@@ -176,7 +176,8 @@ public class Judge {
 
                     // Calculate PREVENT STRENGTH of all 'opponents' (other movers going to the same destination)
                     // returns true if our Move order is the greatest (with no ties)
-                    return champion(order, attackStrength, optimistic, otherOpponents);
+                    return champion(order, attackStrength, optimistic, otherOpponents) &&
+                            (!Orders.adjacentMatchingConvoyFleetExists(order, orders) || pathSuccessful(order, optimistic, orders));
 
                 } else {  // Lost on hold strength, return false
                     return false;
@@ -222,6 +223,10 @@ public class Judge {
 
             // CONVOYS WILL FAIL WITHOUT A CORRESPONDING ORDER
             if (Orders.locateCorresponding(order, orders) == null)
+                return false;
+
+            // CONVOYS WILL FAIL IF ORDER IS DEEMED INVALID
+            if (!Orders.orderIsValid(order))
                 return false;
 
             Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, orders);
@@ -483,7 +488,7 @@ public class Judge {
 
                 convoyOrders.removeAll(unsuccessfulConvoys);
                 convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
-                for ( ; !convoyPath.isEmpty(); convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+                for ( ; convoyPath.size() > 1; convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
                     unsuccessfulConvoys.clear();
                     for (Order convoyOrder : convoyPath) {
                         if (!resolve(convoyOrder, optimistic))

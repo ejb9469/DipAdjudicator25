@@ -129,6 +129,8 @@ public class TestCase {
         return score;
     }
 
+    public int getSize() { return orders.size(); }
+
 
     public void printEval() {
         System.out.println(eval+"\n\n");

@@ -88,8 +88,11 @@ public class TestCaseManager {
             testCase.eval(manager.willPrint());
 
         System.out.println("----------------------------------------\n");
-        for (TestCase testCase : manager.testCases)
+        for (TestCase testCase : manager.testCases) {
             testCase.printNameAndScore();
+            if (testCase.getScore() != testCase.getSize())
+                System.out.println("\t\u001B[31mFAILED!!\u001B[0m");  // red color ANSI code (then black)
+        }
 
         System.out.println("\n----------------------------------------");
         System.out.printf("TOTAL SCORE (by Test Cases):\t[%d/%d]\n", manager.score(), manager.size());
