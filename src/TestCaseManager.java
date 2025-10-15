@@ -84,8 +84,10 @@ public class TestCaseManager {
         Collection<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(testCases);
         System.out.println("\n----------------------------------------\n");
-        for (TestCase testCase : manager.testCases)
+        for (TestCase testCase : manager.testCases) {
+            //testCase.shuffle();  // TODO: Breaks Paradox-related Test Cases: will need to implement a meta-analysis layer when a Paradox is detected
             testCase.eval(manager.willPrint());
+        }
 
         System.out.println("----------------------------------------\n");
         for (TestCase testCase : manager.testCases) {

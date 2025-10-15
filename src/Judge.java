@@ -9,6 +9,8 @@ import java.util.*;
  */
 public class Judge {
 
+    public static final boolean DEBUG_PRINT = true;
+
     // The adjudication program needs to handle the following situations:
         // a. An order that is not indirectly dependent on itself
         // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
@@ -43,6 +45,9 @@ public class Judge {
     private int         recursionHits   = 0;
     private boolean     uncertain       = false;
 
+    private boolean     paradoxDetected           = false;
+    private int         convoyParadoxesDetected   = 0;
+
 
     /**
      * <i><u>Definitively</u></i> resolves the Collection of Orders `orders`.<br><br>
@@ -58,15 +63,103 @@ public class Judge {
      */
     public void judge() {
 
-        // 1st run
+        // TODO: The precise OOP of the `judge()` func is largely 'placeholder', and (usually) only matters for Paradoxes.
+        //       We will need to "meta-resolve" Order Lists containing (certain? most? all?) Paradoxes regardless --
+        //          -- which should be implemented on its own 'layer'.
+        //       i.e. The order of elements of Order Lists matters when dealing with (certain? most? all?) paradoxical situations
+        //       For more information, see `TestCaseManager.java`'s use of `TestCase.shuffle()` (and the implementation of `TestCase.shuffle` itself)
+
+        // 1st run :: HARDER RESOLVE
         for (Order order : orders)
             order.verdict = resolve(order, true);
 
-        // 2nd run
+        // collect r1 verdicts
+        boolean[] verdicts1 = new boolean[orders.size()];
+        int i = 0;
         for (Order order : orders)
+            verdicts1[i++] = order.verdict;
+
+
+        // 2nd run :: SOFT RESOLVE
+        for (Order order : orders)
+            resolve(order, false);
+
+        // collect r2 verdicts
+        boolean[] verdicts2 = new boolean[orders.size()];
+        i = 0;
+        for (Order order : orders)
+            verdicts2[i++] = order.verdict;
+
+
+        // 3rd run :: HARD RESOLVE
+        for (Order order : orders) {
+            order.resolved = false;
             resolve(order, true);
+        }
+
+        // collect r3 verdicts
+        boolean[] verdicts3 = new boolean[orders.size()];
+        i = 0;
+        for (Order order : orders)
+            verdicts3[i++] = order.verdict;
+
+        // Declare a Paradox if any resolution(s) differ(s) from the rest
+        // The `szykmanRule(...)` routine may also declare a Paradox via the `convoyParadoxesDetected` flag
+        if (!Arrays.equals(verdicts1, verdicts2) || !Arrays.equals(verdicts1, verdicts3) || !Arrays.equals(verdicts2, verdicts3))
+            paradoxDetected = true;
+
+        // CHECK FOR PARADOXES \\
+        boolean[] verdicts4 = null;  // declare r4 verdicts array
+        if (paradoxDetected && convoyParadoxesDetected == 0) {
+
+            boolean[] doomerVerdicts = getMostPessimisticVerdicts(false, verdicts1, verdicts2, verdicts3);
+            i = 0;
+            for (Order order : orders)
+                order.verdict = doomerVerdicts[i++];
+
+        } else if (paradoxDetected && convoyParadoxesDetected > 0) {
+
+                boolean[] bloomerVerdicts = getMostPessimisticVerdicts(true, verdicts1, verdicts2, verdicts3);
+                i = 0;
+                for (Order order : orders)
+                    order.verdict = bloomerVerdicts[i++];
+
+                // Check for SECOND-LEVEL PARADOXES \\
+                boolean[] doomerVerdicts = getMostPessimisticVerdicts(false, verdicts1, verdicts2, verdicts3);
+                if (!Arrays.equals(bloomerVerdicts, doomerVerdicts)) {
+                    for (Order order : orders)
+                        order.resolved = false;
+                    for (Order order : orders)
+                        resolve(order, true);
+                    // collect r4 verdicts
+                    verdicts4 = new boolean[orders.size()];
+                    i = 0;
+                    for (Order order : orders)
+                        verdicts4[i++] = order.verdict;
+                    if (!Arrays.equals(bloomerVerdicts, verdicts4)) {
+                        // if needed, we could collect r5 verdicts here
+                        for (Order order : orders)
+                            order.resolved = false;
+                        for (Order order : orders)
+                            resolve(order, true);
+                    }
+                }
+
+        }
+
+        // DEBUG [`System.err`] OUTPUT
+        if (DEBUG_PRINT && (paradoxDetected || convoyParadoxesDetected > 0)) {
+            char pdTick;
+            if (paradoxDetected)
+                pdTick  = '*';
+            else pdTick = '_';
+            System.err.printf("FAIL(%c%d): %s\n", pdTick, convoyParadoxesDetected, this.orders.toString());
+            System.err.printf("\tV1:\t%s\n\tV2:\t%s\n\tV3:\t%s\n\tV4:\t%s\n",
+                    Arrays.toString(verdicts1), Arrays.toString(verdicts2), Arrays.toString(verdicts3), Arrays.toString(verdicts4));
+        }
 
     }
+
 
     /**
      * Performs the necessary adjudication equations to resolve an Order.<br><br>
@@ -124,6 +217,15 @@ public class Judge {
                     //      1) The other move EITHER succeeds on its own merits, OR we deduce the H2H Battle restrictions could be sabotaging the other move's success verdict
                     //      2) Our principal Order "is champion"; beats out all other attacks to its destination
                     //      3) The other move is ALSO champion of its destination
+                    //      4) The Convoy Path is successful, or another one can be found
+
+                    Collection<Order> convoyOrders1 = Orders.pruneForOrderType(
+                                                      OrderType.CONVOY, Orders.locateCorresponding(order, true, orders));
+                    Collection<Order> convoyOrders2 = Orders.pruneForOrderType(
+                                                      OrderType.CONVOY, Orders.locateCorresponding(headToHead, true, orders));
+                    boolean convoyPath1Successful = convoyPathSuccessful(order, optimistic, convoyOrders1);
+                    boolean convoyPath2Successful = convoyPathSuccessful(headToHead, optimistic, convoyOrders2);
+
 
                     boolean otherMoveSuccessful = resolve(headToHead, optimistic);
                     //int destHoldStrength = calculateHoldStrength(order.pos1, optimistic, orders);
@@ -134,21 +236,24 @@ public class Judge {
                             (disguisedHeadToHeadAttackStrength - currentHeadToHeadAttackStrength);
 
                     boolean swapSuccess = (otherMoveSuccessful || headToHeadAttackStrengthDiscrepancy > 0) &&
+                                          (convoyPath1Successful || convoyPath2Successful) &&
                                            //(attackStrength > destHoldStrength) &&
                                            champion(order, attackStrength, optimistic, otherOpponents) &&
                                            champion(headToHead, disguisedHeadToHeadAttackStrength, optimistic,
                                                     Orders.locateUnitsMovingToPosition(headToHead.pos1, orders));
 
-                    // If the Convoy-Swap appears successful, allow `headToHead` a second chance at another, different resolution later, ...
-                    // ... via a SPECIAL FLAG `Order.suppressH2HAdjudication` (wysiwyg) ...
-                    // ... Since: A) this H2H battle is no longer an obstacle, and B) there can only be one H2H battle per (set of) Order(s)
+                    // If the Convoy-Swap appears successful, force the `headToHead` Order to reevaluate...
+                    // ... going down the NON-HEAD-TO-HEAD tree (via a SPECIAL FLAG `Order.suppressH2HAdjudication` (wysiwyg)) ...
+                    // Why?
+                    //      A) this H2H battle is no longer an obstacle
+                    //      B) there can only be one H2H battle per (set of) Order(s)
                     // For good measure, also tick our principal Order's `suppressH2HAdjudication` flag
                     // Note: THIS IS A 'SHORTCUT' AND VIOLATES THE DIVISION OF RESPONSIBILITY BTWN. `ADJUDICATE()` AND `RESOLVE()`
-
                     if (swapSuccess) {
                         headToHead.resolved                 = false;
                         headToHead.suppressH2HAdjudication  = true;
                         order.suppressH2HAdjudication       = true;
+                        resolve(headToHead, optimistic);
                     }
 
                     return swapSuccess;
@@ -235,15 +340,16 @@ public class Judge {
                 if (resolve(assailant, !optimistic)) {
 
                     Order matchingMoveOrder = Orders.locateCorresponding(order, this.orders);
-                    if (matchingMoveOrder != null)
+                    if (matchingMoveOrder != null) {
                         if (!matchingMoveOrder.pos0.isAdjacentTo(matchingMoveOrder.pos1)) {
                             // There exists a Move to & from non-adjacent squares that matches this convoy's specifications,
-                            // and this convoy is now dislodged
-                            // Therefore, the move cannot possibly go through
+                            // and this convoy is now dislodged...
+                            // Therefore, force `matchingMoveOrder` to reevaluate!
                             // Note: THIS IS A 'SHORTCUT' AND VIOLATES THE DIVISION OF RESPONSIBILITY BTWN. `ADJUDICATE()` AND `RESOLVE()`
-                            matchingMoveOrder.resolved = true;
-                            matchingMoveOrder.verdict = false;
+                            matchingMoveOrder.resolved = false;
+                            resolve(matchingMoveOrder, optimistic);
                         }
+                    }
 
                     return false;
 
@@ -422,14 +528,16 @@ public class Judge {
     private void szykmanRule(List<Order> cyclicalOrders) {
 
         for (Order order : cyclicalOrders) {
-
             if (order.orderType == OrderType.CONVOY) {
+                //order.resolved = true;
+                //order.verdict = false;
                 order.pos1 = null;
                 order.pos2 = null;
                 order.orderType = OrderType.HOLD;
             }
-
         }
+
+        this.convoyParadoxesDetected++;
 
     }
 
@@ -467,6 +575,7 @@ public class Judge {
 
             // Try the first convoy route, and allow the path (return true) if every convoying fleet succeeds (i.e. is not dislodged)
             // If the first route is unsuccessful, begin looping for possible convoy routes
+            // TODO: Separate this procedure into its own function -- and use it elsewhere where needed
 
             Collection<Order> convoyOrders = Orders.pruneForOrderType(OrderType.CONVOY, orders);
             List<Order> convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
@@ -488,7 +597,11 @@ public class Judge {
 
                 convoyOrders.removeAll(unsuccessfulConvoys);
                 convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
-                for ( ; convoyPath.size() > 1; convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+
+                for ( ;
+                      (!convoyPath.isEmpty() && !Convoys.convoyPathIsValid(moveOrder, convoyPath));
+                      convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+
                     unsuccessfulConvoys.clear();
                     for (Order convoyOrder : convoyPath) {
                         if (!resolve(convoyOrder, optimistic))
@@ -498,6 +611,7 @@ public class Judge {
                         return true;
                     else
                         convoyOrders.removeAll(unsuccessfulConvoys);
+
                 }
 
                 // No convoy path available -- only the land route
@@ -515,11 +629,59 @@ public class Judge {
 
         } else {
 
-            // Armies cannot traverse split coasts
+            // Armies cannot traverse split coast Provinces
             if (moveOrder.unitType == UnitType.ARMY && moveOrder.pos1.coastType == CoastType.SPLIT)
                 return false;
 
             return moveOrder.pos0.isAdjacentTo(moveOrder.pos1);  // Try land route, no convoys detected
+
+        }
+
+    }
+
+    protected boolean convoyPathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> convoyOrders) {
+
+        if (convoyOrders.isEmpty())
+            return false;
+
+        List<Order> convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
+        List<Order> unsuccessfulConvoys = new ArrayList<>();
+        for (Order convoyOrder : convoyPath) {
+            if (!resolve(convoyOrder, optimistic))
+                unsuccessfulConvoys.add(convoyOrder);
+        }
+
+        if (unsuccessfulConvoys.isEmpty())
+            return true;
+        else {
+
+            // Multiple Convoy Routes:
+            // Check if there is a different convoy route,
+            // ... comprised of fleets that are all successful
+            // Continue to check until `Convoys.drawConvoyPath()` returns an empty collection,
+            // ... or we find a path of successful convoys
+
+            convoyOrders.removeAll(unsuccessfulConvoys);
+            convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders);
+
+            for ( ;
+                  (!convoyPath.isEmpty() && !Convoys.convoyPathIsValid(moveOrder, convoyPath));
+                  convoyPath = Convoys.drawConvoyPath(moveOrder, convoyOrders)) {
+
+                unsuccessfulConvoys.clear();
+                for (Order convoyOrder : convoyPath) {
+                    if (!resolve(convoyOrder, optimistic))
+                        unsuccessfulConvoys.add(convoyOrder);
+                }
+                if (unsuccessfulConvoys.isEmpty())
+                    return true;
+                else
+                    convoyOrders.removeAll(unsuccessfulConvoys);
+
+            }
+
+            // No convoy path available -- only the land route
+            return false;
 
         }
 
@@ -744,8 +906,23 @@ public class Judge {
         if (!pathSuccessful(moveOrder, optimistic, orders))
             return 0;
 
+        // Checking the `sH2HAdj` flags is a solution to the "2-units-in-1-area bug", re: convoy swaps & incorrect Prevent Str. calculation
+        // For more information, see the Test Case: ["6.G.16. THE TWO UNIT IN ONE AREA BUG, MOVING BY CONVOY"
+        // Snippet of the DATC below:
+        /* (Orders):
+           [A Nwy - Swe, A Den S Nwy - Swe, F BAL S Nwy - Swe, F NTH - Nwy, F Swe - Nwy, F SKA C Swe - Nwy, F NWG S Swe - Nwy]
+                "If the 'PREVENT STRENGTH' is incorrectly implemented, due to the fact that it does not take into account that the 'PREVENT STRENGTH' is only zero when...
+                ... the unit is engaged in a head-to-head battle, then this goes wrong in this test case.
+                The 'PREVENT STRENGTH' of Sweden would be zero, because the opposing unit in Norway successfully moves.
+                Since, this strength would be zero, the fleet in the North Sea would move to Norway.
+                However, although the 'PREVENT STRENGTH' is zero, the army in Sweden would also move to Norway.
+                So, the final result would contain two units that successfully moved to Norway.
+             !! Of course !! ...this is incorrect. Norway will indeed successfully move to Sweden while the army in Sweden ends in Norway, ...
+                ... because it is stronger than the fleet in the North Sea.
+             -> This fleet will stay in the North Sea. <-
+         */
         Order headToHead = Orders.locateHeadToHead(moveOrder, orders);
-        if (headToHead != null) {
+        if (headToHead != null && !headToHead.suppressH2HAdjudication && !moveOrder.suppressH2HAdjudication) {
             if (resolve(headToHead, optimistic))
                 return 0;
         }
@@ -779,6 +956,34 @@ public class Judge {
         } // else: below
 
         return 1+tallySuccessfulSupports(occupant, optimistic, orders);
+
+    }
+
+
+    private static boolean[] getMostPessimisticVerdicts(boolean inverse, boolean[]... verdictsArrays) {
+
+        if (verdictsArrays.length == 0)
+            throw new IllegalArgumentException("empty `boolean[]... verdictsArrays` in `Judge.getMostPessimisticVerdictI(...)`");
+
+        int highestPessimismVerdictsIndex = 0;
+        int highestPessimism = 0;
+        for (int i = 0; i < verdictsArrays.length; i++) {
+
+            boolean[] verdicts = verdictsArrays[i];
+            int pessimism = 0;
+
+            for (boolean verdict : verdicts)
+                if ((verdict && inverse) || (!verdict && !inverse))
+                    pessimism++;
+
+            if (pessimism >= highestPessimism) {
+                highestPessimism = pessimism;
+                highestPessimismVerdictsIndex = i;
+            }
+
+        }
+
+        return verdictsArrays[highestPessimismVerdictsIndex];
 
     }
 

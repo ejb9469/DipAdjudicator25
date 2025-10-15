@@ -15,7 +15,7 @@ public abstract class Orders {
      */
     public static boolean orderIsValid(Order order) {
 
-        // Does not check for appropriate-ness of Convoys
+        // Does not check for appropriate-ness of Convoys (but will still check for their validity)
         // Does not check for adjacency of Moves
         switch (order.orderType) {
 
@@ -126,6 +126,9 @@ public abstract class Orders {
     // NOT A MUTATOR \\
     public static Collection<Order> pruneForOrderType(OrderType orderType, Collection<Order> orders) {
 
+        if (orders == null)
+            return (new ArrayList<>());
+
         Collection<Order> newOrders = new ArrayList<>();
         for (Order order : orders) {
             if (orderType == order.orderType)
@@ -220,11 +223,11 @@ public abstract class Orders {
 
         if (supportOrConvoyOrder.orderType != OrderType.SUPPORT &&
             supportOrConvoyOrder.orderType != OrderType.CONVOY) {
-            throw new IllegalArgumentException(String.format("`locateCorresponding()` called on non-support-or-convoy Order: %s", supportOrConvoyOrder));
+            throw new IllegalArgumentException(String.format("`locateCorresponding()` called on non-Support-or-Convoy Order: %s", supportOrConvoyOrder));
         }
 
         // Handle Support-Holds separately
-        if (supportOrConvoyOrder.orderType == OrderType.SUPPORT && supportOrConvoyOrder.pos2 == null) {
+        if (supportOrConvoyOrder.pos2 == null) {
             for (Order order : orders) {
                 if (order.equals(supportOrConvoyOrder) || order.orderType == OrderType.MOVE)
                     continue;
@@ -241,6 +244,36 @@ public abstract class Orders {
         }
 
         return null;
+
+    }
+
+    public static Collection<Order> locateCorresponding(Order moveOrHoldOrder, boolean locateSupportsFromMove, Collection<Order> orders) {
+
+        if (!locateSupportsFromMove) {
+
+           Collection<Order> singleton = new ArrayList<>();
+           singleton.add(locateCorresponding(moveOrHoldOrder, orders));
+           return singleton;
+
+        } else {
+
+            if (moveOrHoldOrder.orderType != OrderType.MOVE &&
+                    moveOrHoldOrder.orderType != OrderType.HOLD) {
+                throw new IllegalArgumentException(String.format("`locateCorresponding()` called on non-Move-or-Hold Order: %s", moveOrHoldOrder));
+            }
+
+            Collection<Order> corresponding = new ArrayList<>();
+            for (Order order : orders) {
+                if (order.equals(moveOrHoldOrder) || (order.orderType != OrderType.CONVOY && order.orderType != OrderType.SUPPORT))
+                    continue;
+                if ((moveOrHoldOrder.pos1 == null && order.pos1 == moveOrHoldOrder.pos0 && order.pos2 == null) ||
+                    (moveOrHoldOrder.pos1 != null && order.pos1 == moveOrHoldOrder.pos0 && order.pos2 == moveOrHoldOrder.pos1))
+                    corresponding.add(order);
+            }
+
+            return corresponding;
+
+        }
 
     }
 

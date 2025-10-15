@@ -7,6 +7,45 @@ import java.util.List;
  */
 public abstract class Convoys /*extends Orders*/ {
 
+    public static boolean convoyPathIsValid(Order moveOrder, List<Order> convoyPath) {
+
+        if (convoyPath.isEmpty())
+            return false;
+
+        Order firstConvoy = convoyPath.getFirst();
+
+        if (!firstConvoy.pos0.isAdjacentTo(moveOrder.pos0))
+            return false;
+
+        if (convoyPath.size() == 1) {
+
+            // We have already checked the Convoy's adjacency to the Moving Order,
+            // so all that remains is checking its adjacency to the Destination
+            return (!firstConvoy.pos0.isAdjacentTo(moveOrder.pos1));
+
+        } else {  // convoyPath.size() >= 2
+
+            Order lastConvoy = convoyPath.getLast();
+
+            if (!lastConvoy.pos0.isAdjacentTo(moveOrder.pos1))
+                return false;
+
+            for (int i = 1; i < convoyPath.size(); i++) {
+
+                Order convoyOrder = convoyPath.get(i);
+                if (!convoyOrder.pos0.isAdjacentTo(convoyPath.get(i-1).pos0))
+                    return false;
+                if (!Orders.orderIsValid(convoyOrder))
+                    return false;
+
+            }
+
+            return true;
+
+        }
+
+    }
+
     /**
      * Draws one possible convoy path for a given Move Order
      * @param moveOrder Move Order
@@ -32,7 +71,6 @@ public abstract class Convoys /*extends Orders*/ {
         Order firstConvoy = beginningConvoys.getFirst();
         List<Order> initPath = new ArrayList<>();
         initPath.add(firstConvoy);
-
         return convoyPath(firstConvoy, initPath, new ArrayList<>(), orders);
 
     }

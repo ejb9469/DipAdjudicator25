@@ -2,7 +2,7 @@ import java.util.*;
 
 public class TestCase {
 
-    public static final String TESTCASE_PREFIX = "TEST CASE - ";
+    public static final String  TESTCASE_PREFIX = "TEST CASE - ";
 
     private final List<Order>   orders;
     private String              name;
@@ -88,6 +88,36 @@ public class TestCase {
     }
 
 
+    public void shuffle() {
+
+        if (orders.isEmpty() || expectedFields.isEmpty())
+            return;
+
+        List<Integer> indexes = new ArrayList<>();
+        for (int i = 0; i < orders.size(); i++)
+            indexes.add(i);
+
+        Collections.shuffle(indexes);
+
+        List<Order> orders_New              = new ArrayList<>();
+        List<boolean[]> expectedFields_New  = new ArrayList<>();
+        List<boolean[]> actualFields_New    = new ArrayList<>();
+
+        for (int index : indexes) {
+            orders_New.add(orders.get(index));
+            expectedFields_New.add(expectedFields.get(index));
+            if (!actualFields.isEmpty())
+                actualFields_New.add(actualFields.get(index));
+        }
+
+        this.orders.clear();
+        this.orders.addAll(orders_New);
+        this.expectedFields = expectedFields_New;
+        this.actualFields = actualFields_New;
+
+    }
+
+
     public void setExpectedFields(boolean[]... fields) {
 
         if (fields.length != orders.size())
@@ -112,6 +142,7 @@ public class TestCase {
     public void setName(String name) {
         this.name = name;
     }
+
 
     public String getName() {
         return name;

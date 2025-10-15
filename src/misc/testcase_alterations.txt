@@ -48,3 +48,64 @@
 
 6.D.32. A MISSING FLEET ::
     ~ Idem. (https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1)
+
+
+6.FF.24. SECOND ORDER PARADOX WITH NO RESOLUTION ::
+    ~ This Test Case has "no resolution", and I argue that my alternative (F Lon's support is cut because F ENG is not dislodged, therefore F NTH holds succeeds)...
+      ... conforms better to the Szykman Alternative, because F ENG is not really a problem convoy.
+
+
+6.G.02. KIDNAPPING AN ARMY ::
+    ~ Both DATC and the official rulebook are against me on this one; they both rule that 'Convoy Kidnapping' should not be allowed as such, ...
+      ... and that, for the convoy to succeed, EITHER the army + fleet must be of the same nationality, OR the army has specified "via convoy".
+    ~ (See: https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.3)
+    ~ However, I have decided to allow Convoy Kidnapping for 3 reasons:
+        1) the "via convoy" feature will be implemented in a future subclass of `Judge`, perhaps `StrictJudge`
+        2) Without the presence of "via convoy" (as in: this implementation), I would argue that Convoy Kidnapping should be allowed
+        3) Backstabbr, the premier platform for the online Diplomacy hobby (as of writing 10-15-25), allows for Convoy Kidnapping
+
+
+6.G.07. SWAPPING WITH ILLEGAL INTENT ::
+        +(and)+
+6.G.14. BOUNCE BY CONVOY TO ADJACENT PROVINCE ::
+        +(and)+
+6.G.15. BOUNCE AND DISLODGE WITH DOUBLE CONVOY ::
+    ~ DATC indicates that "F BOT C Swe - Nwy" (no other convoys) should be deemed illegal...
+    ~ But so long as it doesn't cause problems later, this adjudicator functions better by assuming it is legal (there could, theoretically, be other fleets in a chain that make this work)
+    ~ I suppose, since there is no possible Convoy Route from Swe -> Nwy over the Baltic-region tiles, one could implicitly deem this order illegal.
+    ~ But I have not implemented implicit invalidity like that in similar instances, so I will leave this alone...
+      ... (see 6.D.31. A TRICKY IMPOSSIBLE SUPPORT)
+
+
+6.G.8. EXPLICIT CONVOY THAT ISN'T THERE ::
+    ~ Not applicable without the "via convoy" explicit convoy intention signal feature. Says as much on the DATC page.
+    ~ So, I left this one out of the Test Case suite for `Judge`.
+
+
+6.G.10. SWAPPED OR AN HEAD-TO-HEAD BATTLE(qm) ::
+    ~ DATC indicates there are 2 possible interpretations (https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.7)
+    ~ It goes with Interpretation B (DATC). I am going with interpretation A (rulebook), since it is what this adjudicator prefers, ...
+      ... and because Interpr. B mentions convoy swaps as "special exceptions to other rules", which contradicts the philosophy (thus far) of Base Class `Judge.java`
+
+
+6.G.11.P. A CONVOY TO AN ADJACENT PROVINCE WITH A PARADOX ::
+    ~ Fallback is allowed in base-class `Judge`, so I went with the 1973 rulebook adjudication. It seems more akin to this adjudicator's principles.
+    ~ See:
+        1) https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.2
+        2) https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.3
+
+
+6.G.13. SUPPORT CUT ON ATTACK ON ITSELF VIA CONVOY ::
+    ~ Using the 1971 rulebook adjudication. It seems more akin to this adjudicator's (`Judge`) principles
+    ~ See: (https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.3)
+
+
+6.G.19. SWAPPING WITH INTENT OF UNNECESSARY CONVOY ::
+    ~ Following the precedent of our 70s-era liberal convoy-swapping policy, I will follow the 1971 rulebook here and swap the units.
+    ~ See:
+        1) https://webdiplomacy.net/doc/DATC_v3_0.html#4.A.3
+        2) https://webdiplomacy.net/doc/DATC_v3_0.html#4.E.1
+
+
+6.G.20. EXPLICIT CONVOY TO ADJACENT PROVINCE DISRUPTED ::
+    ~ Fallback is allowed in base-class `Judge`, without the notion of "via convoy". This Test Case reflects that.

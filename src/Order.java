@@ -54,6 +54,7 @@ public class Order {
         this.resolved = order2.resolved;
         this.verdict = order2.verdict;
         this.visited = order2.visited;
+        this.suppressH2HAdjudication = order2.suppressH2HAdjudication;
     }
 
 
