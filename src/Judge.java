@@ -11,12 +11,13 @@ public class Judge {
 
     public static final boolean DEBUG_PRINT = true;
 
+
     // The adjudication program needs to handle the following situations:
         // a. An order that is not indirectly dependent on itself
         // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
         // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
 
-    protected final Collection<Order> orders;
+    protected Collection<Order> orders;
 
 
     public Judge() {
@@ -45,9 +46,6 @@ public class Judge {
     private int         recursionHits   = 0;
     private boolean     uncertain       = false;
 
-    private boolean     paradoxDetected           = false;
-    private int         convoyParadoxesDetected   = 0;
-
 
     /**
      * <i><u>Definitively</u></i> resolves the Collection of Orders `orders`.<br><br>
@@ -69,94 +67,35 @@ public class Judge {
         //       i.e. The order of elements of Order Lists matters when dealing with (certain? most? all?) paradoxical situations
         //       For more information, see `TestCaseManager.java`'s use of `TestCase.shuffle()` (and the implementation of `TestCase.shuffle` itself)
 
-        // 1st run :: HARDER RESOLVE
+        // DEFAULT IMPLEMENTATION: \\  [1 Hard Resolve + 1 Soft Resolve]
+
+        Collection<Order> ordersCopy = Orders.deepCopy(this.orders);
+
+        // 1st run :: HARD RESOLVE
         for (Order order : orders)
             order.verdict = resolve(order, true);
 
-        // collect r1 verdicts
-        boolean[] verdicts1 = new boolean[orders.size()];
-        int i = 0;
-        for (Order order : orders)
-            verdicts1[i++] = order.verdict;
-
-
         // 2nd run :: SOFT RESOLVE
         for (Order order : orders)
-            resolve(order, false);
-
-        // collect r2 verdicts
-        boolean[] verdicts2 = new boolean[orders.size()];
-        i = 0;
-        for (Order order : orders)
-            verdicts2[i++] = order.verdict;
-
-
-        // 3rd run :: HARD RESOLVE
-        for (Order order : orders) {
-            order.resolved = false;
             resolve(order, true);
-        }
 
-        // collect r3 verdicts
-        boolean[] verdicts3 = new boolean[orders.size()];
-        i = 0;
-        for (Order order : orders)
-            verdicts3[i++] = order.verdict;
+        // Detect Szykman rule overriding an Order(s) with HOLDs,
+        // ... in this case, run through the judging process again
+        if (!Orders.diff(List.of(ordersCopy, this.orders)).isEmpty()) {
 
-        // Declare a Paradox if any resolution(s) differ(s) from the rest
-        // The `szykmanRule(...)` routine may also declare a Paradox via the `convoyParadoxesDetected` flag
-        if (!Arrays.equals(verdicts1, verdicts2) || !Arrays.equals(verdicts1, verdicts3) || !Arrays.equals(verdicts2, verdicts3))
-            paradoxDetected = true;
-
-        // CHECK FOR PARADOXES \\
-        boolean[] verdicts4 = null;  // declare r4 verdicts array
-        if (paradoxDetected && convoyParadoxesDetected == 0) {
-
-            boolean[] doomerVerdicts = getMostPessimisticVerdicts(false, verdicts1, verdicts2, verdicts3);
-            i = 0;
             for (Order order : orders)
-                order.verdict = doomerVerdicts[i++];
+                order.wipeMetaInf();
 
-        } else if (paradoxDetected && convoyParadoxesDetected > 0) {
+            // 1st run :: HARD RESOLVE
+            for (Order order : orders)
+                order.verdict = resolve(order, true);
 
-                boolean[] bloomerVerdicts = getMostPessimisticVerdicts(true, verdicts1, verdicts2, verdicts3);
-                i = 0;
-                for (Order order : orders)
-                    order.verdict = bloomerVerdicts[i++];
-
-                // Check for SECOND-LEVEL PARADOXES \\
-                boolean[] doomerVerdicts = getMostPessimisticVerdicts(false, verdicts1, verdicts2, verdicts3);
-                if (!Arrays.equals(bloomerVerdicts, doomerVerdicts)) {
-                    for (Order order : orders)
-                        order.resolved = false;
-                    for (Order order : orders)
-                        resolve(order, true);
-                    // collect r4 verdicts
-                    verdicts4 = new boolean[orders.size()];
-                    i = 0;
-                    for (Order order : orders)
-                        verdicts4[i++] = order.verdict;
-                    if (!Arrays.equals(bloomerVerdicts, verdicts4)) {
-                        // if needed, we could collect r5 verdicts here
-                        for (Order order : orders)
-                            order.resolved = false;
-                        for (Order order : orders)
-                            resolve(order, true);
-                    }
-                }
+            // 2nd run :: SOFT RESOLVE
+            for (Order order : orders)
+                resolve(order, true);
 
         }
 
-        // DEBUG [`System.err`] OUTPUT
-        if (DEBUG_PRINT && (paradoxDetected || convoyParadoxesDetected > 0)) {
-            char pdTick;
-            if (paradoxDetected)
-                pdTick  = '*';
-            else pdTick = '_';
-            System.err.printf("FAIL(%c%d): %s\n", pdTick, convoyParadoxesDetected, this.orders.toString());
-            System.err.printf("\tV1:\t%s\n\tV2:\t%s\n\tV3:\t%s\n\tV4:\t%s\n",
-                    Arrays.toString(verdicts1), Arrays.toString(verdicts2), Arrays.toString(verdicts3), Arrays.toString(verdicts4));
-        }
 
     }
 
@@ -266,6 +205,17 @@ public class Judge {
 
             // NON-HEAD-TO-HEAD Battle
             else {
+
+                // Check if we have arrived here via CONVOY SWAP hijinx (rare edge case)...
+                // If we have, we must re-evaluate all orders adjacent to the swap...
+                // ... (i.e. what WOULD be the head-to-head order)
+                if (headToHead != null) {
+                    Collection<Order> otherOpponents = Orders.locateUnitsMovingToPosition(headToHead.pos1, orders);
+                    for (Order order2 : otherOpponents)
+                        order2.resolved = false;
+                    for (Order order2 : otherOpponents)
+                        resolve(order2, optimistic);
+                }
 
                 // Calculate Move order's ATTACK STRENGTH
                 // [Must be greater than... a. the Hold Strength of the area, and
@@ -528,16 +478,21 @@ public class Judge {
     private void szykmanRule(List<Order> cyclicalOrders) {
 
         for (Order order : cyclicalOrders) {
+
             if (order.orderType == OrderType.CONVOY) {
+
+                // take a copy of the original, since the adjudication / resolution process changes the order
+                order.takeSnapshot();
+
                 //order.resolved = true;
                 //order.verdict = false;
                 order.pos1 = null;
                 order.pos2 = null;
                 order.orderType = OrderType.HOLD;
-            }
-        }
 
-        this.convoyParadoxesDetected++;
+            }
+
+        }
 
     }
 
@@ -639,6 +594,7 @@ public class Judge {
 
     }
 
+    // TODO: JDocs
     protected boolean convoyPathSuccessful(Order moveOrder, boolean optimistic, Collection<Order> convoyOrders) {
 
         if (convoyOrders.isEmpty())
@@ -898,12 +854,13 @@ public class Judge {
      * @param orders Collection of Orders to search
      * @return Prevent Strength of `moveOrder`
      */
+    @SuppressWarnings("PointlessBooleanExpression")
     protected int calculatePreventStrength(Order moveOrder, boolean optimistic, Collection<Order> orders) {
 
         if (moveOrder.orderType != OrderType.MOVE)  // Does not check if the Move Order is indeed Non-Head-to-Head
             throw new IllegalArgumentException(String.format("Non-Move Order supplied for `calculatePreventStrength(...)`: %s", moveOrder));
 
-        if (!pathSuccessful(moveOrder, optimistic, orders))
+        if (!pathSuccessful(moveOrder, optimistic, orders) && moveOrder.suppressH2HAdjudication == false)
             return 0;
 
         // Checking the `sH2HAdj` flags is a solution to the "2-units-in-1-area bug", re: convoy swaps & incorrect Prevent Str. calculation
@@ -922,7 +879,7 @@ public class Judge {
              -> This fleet will stay in the North Sea. <-
          */
         Order headToHead = Orders.locateHeadToHead(moveOrder, orders);
-        if (headToHead != null && !headToHead.suppressH2HAdjudication && !moveOrder.suppressH2HAdjudication) {
+        if (headToHead != null) {
             if (resolve(headToHead, optimistic))
                 return 0;
         }
@@ -956,34 +913,6 @@ public class Judge {
         } // else: below
 
         return 1+tallySuccessfulSupports(occupant, optimistic, orders);
-
-    }
-
-
-    private static boolean[] getMostPessimisticVerdicts(boolean inverse, boolean[]... verdictsArrays) {
-
-        if (verdictsArrays.length == 0)
-            throw new IllegalArgumentException("empty `boolean[]... verdictsArrays` in `Judge.getMostPessimisticVerdictI(...)`");
-
-        int highestPessimismVerdictsIndex = 0;
-        int highestPessimism = 0;
-        for (int i = 0; i < verdictsArrays.length; i++) {
-
-            boolean[] verdicts = verdictsArrays[i];
-            int pessimism = 0;
-
-            for (boolean verdict : verdicts)
-                if ((verdict && inverse) || (!verdict && !inverse))
-                    pessimism++;
-
-            if (pessimism >= highestPessimism) {
-                highestPessimism = pessimism;
-                highestPessimismVerdictsIndex = i;
-            }
-
-        }
-
-        return verdictsArrays[highestPessimismVerdictsIndex];
 
     }
 

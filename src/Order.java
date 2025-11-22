@@ -1,3 +1,5 @@
+import java.util.Objects;
+
 /**
  * The `Order` class is a public-facing class representing a Diplomacy order 'struct'.<br><br>
  *
@@ -15,16 +17,23 @@ public class Order {
     public Province pos0, pos1, pos2;
 
     // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
+    // TODO: Quasi-implemented: 10/19/25 --> WIP
     public boolean dislodged;
 
     // Metadata fields -- `protected` access modifiers
+    // REMEMBER to update `Order.wipeMetaInf()` when adding new metadata flags
     protected boolean resolved;
     protected boolean verdict;
+
     protected boolean visited;
 
     protected boolean suppressH2HAdjudication = false;
 
-    // REMEMBER to update `Order.resetMetaFlags()` when adding new metadata flags
+    // "Original order" field, used if Order is changed during adjudication
+    // ... (for e.g. using Szykman rules)
+    // Will CLONE if .setOriginalOrder() is used
+    // TODO: Quasi-implemented: 11/15/25 --> WIP
+    private Order originalOrder = null;
 
 
     public Order(Nation owner, UnitType unitType, Province origin, OrderType orderType, Province pos1, Province pos2, boolean dislodged) {
@@ -55,10 +64,37 @@ public class Order {
         this.verdict = order2.verdict;
         this.visited = order2.visited;
         this.suppressH2HAdjudication = order2.suppressH2HAdjudication;
+        this.originalOrder = order2.originalOrder;
     }
 
 
-    protected void resetMetaFlags() {
+    protected Order getSnapshot() {
+        return this.originalOrder;
+    }
+
+    protected void takeSnapshot() {
+        this.originalOrder = new Order(this);  // CLONE constructor
+        getSnapshot().originalOrder = null;  // avoid infinite reference loop
+    }
+
+    protected void restoreFromSnapshot() {
+
+        this.owner = getSnapshot().owner;
+        this.unitType = getSnapshot().unitType;
+        this.orderType = getSnapshot().orderType;
+        this.pos0 = getSnapshot().pos0;
+        this.pos1 = getSnapshot().pos1;
+        this.pos2 = getSnapshot().pos2;
+        // does replicate `dislodged` field, because so does clone constructor
+        this.dislodged = getSnapshot().dislodged;
+
+        // un-set snapshot
+        this.originalOrder = null;
+
+    }
+
+
+    protected void wipeMetaInf() {
         this.resolved = false;
         this.verdict = false;
         this.visited = false;
@@ -152,6 +188,16 @@ public class Order {
                 this.pos0 == order2.pos0 && this.pos1 == order2.pos1 && this.pos2 == order2.pos2 &&
                 this.dislodged == order2.dislodged);
 
+    }
+
+    // TODO: Documentation needed!
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.owner, this.unitType, this.orderType,
+                            this.pos0, this.pos1, this.pos2,
+                            this.dislodged,
+                            this.resolved, this.verdict);
+        // Notable exceptions: `visited` and `suppressH2HAdjudication` are not computed into the hash
     }
 
 }

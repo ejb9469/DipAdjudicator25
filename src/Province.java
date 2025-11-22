@@ -4,7 +4,6 @@ import java.util.Map;
 
 public enum Province implements StrictState {
 
-
     Boh("Bohemia", false, false),
     Bud("Budapest", Geography.INLAND, true, Nation.AUSTRIA),
     Gal("Galicia", false, false),
@@ -477,6 +476,10 @@ public enum Province implements StrictState {
         this.parent = parent;
         enforceStasis();  // Double-check for validity -- TODO
 
+    }
+
+    public static Map<Province, Province[]> getAdjacencyMapCopy() {
+        return new HashMap<>(adjacencyMap);  // TODO: does using this constructor produce a shallow or deep copy??
     }
 
 

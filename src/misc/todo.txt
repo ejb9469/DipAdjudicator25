@@ -1,3 +1,21 @@
+::10-22-25::
+    ~ JDocs and comments for new code (e.g. Referee, RetreatsJudge, PiecePusher, Constants, misc. new functions, etc.)
+    ~ Rename / refactor names of new code (especially first 3 classes in above examples)
+    // [DONE] --> ~ Reorganize most constants into `Constants.java`, and create more constants if any opportunities
+    ~ Complete implementation of the 'Retreats Flow', utilizing `PiecePusher.java`
+    ~ Implement Builds Flow, utilizing `PiecePusher.java` (??)
+    ~ Create special `TestCase.java` subclass that handles Test Cases re: Retreats information
+    ~ DITTO, "...Test Cases re: Builds information"
+    ~ Research the nature of `Referee::judge()` outcomes -- e.g. locate interesting test cases.
+        ~ Is there any (semi-)universal rule to choose between different possible resolutions?
+    ~ Design and draft 'Paradox Detection'
+        ~ Ignore [P=1] (??)
+
+    ~ Implement Paradox Detection
+    ~ Improve algorithmic & memory allocation efficiency of `Referee.java` methods (re: permutations, etc.)
+    ~ Add new aliases / improve aliases system in `Province.java`
+
+
 ::10-08-25::
 #1. Implement Coasts + relevant Test Cases
 #2. Implement Retreats & Builds phases (remember `Retreats.suffocated(...)`!)

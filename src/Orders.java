@@ -1,7 +1,5 @@
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class of static utility functions re: Orders and Collections of Orders
@@ -20,6 +18,10 @@ public abstract class Orders {
         switch (order.orderType) {
 
             case MOVE -> {
+                if (order.pos2 != null)
+                    // Move orders do not have a `pos2` location; if it is not null, it is improperly set
+                    // TODO: Is this behavior more appropriate in `StrictJudge`??
+                    return false;
                 if (Province.equalsIgnoreCoast(order.pos0, order.pos1))
                     // Units cannot order to their own location
                     // Locations in `Province` are not adjacent to themselves regardless,
@@ -303,5 +305,40 @@ public abstract class Orders {
         return false;
 
     }
+
+
+    public static Collection<Order> deepCopy(Collection<Order> orders) {
+        // Default to List collection-type
+        return deepCopy(List.copyOf(orders));
+    }
+
+    public static List<Order> deepCopy(List<Order> orders) {
+        return (new ArrayList<>(orders)).stream().map(Order::new).collect(Collectors.toList());
+    }
+
+    public static Set<Order> deepCopy(Set<Order> orders) {
+        return (new HashSet<>(orders)).stream().map(Order::new).collect(Collectors.toSet());
+    }
+
+    public static Set<Order> diff(Collection<Collection<Order>> ordersBag) {
+
+        Set<Order> finalBag = new HashSet<>();
+
+        for (Collection<Order> orders : ordersBag) {
+            for (Order order : orders) {
+                for (Collection<Order> orders2 : ordersBag) {
+                    if (orders2 == orders) continue;
+                    if (!orders2.contains(order)) {
+                        finalBag.add(order);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return finalBag;
+
+    }
+
 
 }

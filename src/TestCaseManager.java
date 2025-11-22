@@ -5,6 +5,10 @@ import java.util.List;
 public class TestCaseManager {
 
 
+
+    public static final boolean USE_REFEREE = false;
+
+
     private final List<TestCase> testCases;
     private final boolean prints;
 
@@ -71,21 +75,21 @@ public class TestCaseManager {
     }
 
 
+
+
+
     public static void main(String[] args) {
 
-        //example();
-        // See `example_main.txt` for contents of `example()`
-
-        System.out.println("\n----------------------------------------\n");
+        Constants.printTimestamp();
 
         TestCaseManager manager = new TestCaseManager(true);
         FileTestCaseParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
 
         Collection<TestCase> testCases = fileParser.parseMany();
-        manager.testCases.addAll(testCases);
+        manager.testCases.addAll(new ArrayList<>(testCases));
         System.out.println("\n----------------------------------------\n");
         for (TestCase testCase : manager.testCases) {
-            //testCase.shuffle();  // TODO: Breaks Paradox-related Test Cases: will need to implement a meta-analysis layer when a Paradox is detected
+            //testCase.shuffle();
             testCase.eval(manager.willPrint());
         }
 
@@ -93,13 +97,66 @@ public class TestCaseManager {
         for (TestCase testCase : manager.testCases) {
             testCase.printNameAndScore();
             if (testCase.getScore() != testCase.getSize())
-                System.out.println("\t\u001B[31mFAILED!!\u001B[0m");  // red color ANSI code (then black)
+                System.out.println(Constants.ANSI_RED + "\tFAILED!!" + Constants.ANSI_RESET);  // red color ANSI code (then black)
         }
 
         System.out.println("\n----------------------------------------");
         System.out.printf("TOTAL SCORE (by Test Cases):\t[%d/%d]\n", manager.score(), manager.size());
         System.out.printf("TOTAL SCORE (by Orders):\t\t[%d/%d]\n", manager.ordersScore(), manager.ordersSize());
         System.out.println("----------------------------------------\n");
+
+        if (USE_REFEREE) {
+
+            System.out.println();
+            manager.testCases.clear();
+            manager.testCases.addAll(new ArrayList<>(testCases));
+
+            for (TestCase testCase : manager.testCases) {
+
+                for (Order order : testCase.getOrders())
+                    order.wipeMetaInf();
+
+                int k = testCase.getOrders().size();
+                try {
+                    Referee referee = new Referee(testCase);
+                    referee.judge();
+                    if (manager.willPrint()) {
+                        int p = referee.resolutions.size();
+                        String ANSI1, ANSI2;
+                        if (p > 1) {
+                            ANSI1 = Constants.ANSI_YELLOW;
+                            ANSI2 = Constants.ANSI_ORANGE;
+                        } else {
+                            ANSI1 = Constants.ANSI_BRIGHTWHITE;
+                            ANSI2 = Constants.ANSI_RESET;
+                        }
+                        System.out.printf("%s[P=%d]%s (k=%d) \t%s%s%s\n",
+                                ANSI1, p, ANSI2,
+                                k,
+                                TestCase.TESTCASE_PREFIX, testCase.getName(),
+                                Constants.ANSI_RESET);
+                    }
+                } catch (TooIntensiveException ex) {
+                    if (manager.willPrint())
+                        System.out.printf("%s[P=?] (k=%d) \t%s%s\n\t%s%s%s\n",
+                                Constants.ANSI_YELLOW, k,
+                                TestCase.TESTCASE_PREFIX, testCase.getName(),
+                                Constants.ANSI_RED, ex.getMessage(), Constants.ANSI_RESET);
+                    else
+                        System.err.printf("[P=?] (k=%d) \t%s%s\n\t%s\n",
+                                k, TestCase.TESTCASE_PREFIX, testCase.getName(), ex.getMessage());
+                }
+
+            }
+
+            Constants.printTimestamp();
+
+        }
+
+        // Blah
+
+        Constants.printTimestamp();
+
 
     }
 
