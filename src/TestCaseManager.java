@@ -5,7 +5,6 @@ import java.util.List;
 public class TestCaseManager {
 
 
-
     public static final boolean USE_REFEREE = false;
 
 
@@ -89,6 +88,10 @@ public class TestCaseManager {
         manager.testCases.addAll(new ArrayList<>(testCases));
         System.out.println("\n----------------------------------------\n");
         for (TestCase testCase : manager.testCases) {
+            //  TODO: Variable output when un-commenting below line indicates...
+            //      1. `Referee.java` is non-functional: FIX!! (easy)
+            //      2. Underlying `Judge.java` algorithm is inconsistent: RESEARCH & FIX!! (hard)
+            //      3. Some non-paradox test cases fail depending on order of orders: IMPROVE CATEGORIES!!
             //testCase.shuffle();
             testCase.eval(manager.willPrint());
         }
