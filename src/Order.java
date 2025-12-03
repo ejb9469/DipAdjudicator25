@@ -11,14 +11,14 @@ public class Order {
     // TODO: Reformat? from class -> record (introduced Java 16; 2021)
 
     // Core fields
-    public Nation owner;
-    public UnitType unitType;
-    public OrderType orderType;
-    public Province pos0, pos1, pos2;
+    public Nation       owner;
+    public UnitType     unitType;
+    public OrderType    orderType;
+    public Province     pos0, pos1, pos2;
 
     // `dislodged` field not currently utilized (09-21-25 -- now: building up test cases)
     // TODO: Quasi-implemented: 10/19/25 --> WIP
-    public boolean dislodged;
+    public boolean      dislodged;
 
     // Metadata fields -- `protected` access modifiers
     // REMEMBER to update `Order.wipeMetaInf()` when adding new metadata flags

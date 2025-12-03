@@ -14,11 +14,19 @@ public abstract class Constants {
     public static final String ANSI_BRIGHTWHITE     = "\u001B[97m";
 
 
-    public static int factorial(int n) {
+    // used in old, inefficient implementation of `Referee`
+    /*public static int factorial(int n) {
         int product = 1;
         for (int i = n; i > 1; i--)
             product *= i;
         return product;
+    }*/
+
+    public static Integer[] range(int n) {
+        Integer[] range = new Integer[n];
+        for (int i = 0; i < n; i++)
+            range[i] = i;
+        return range;
     }
 
     public static void printTimestamp() {

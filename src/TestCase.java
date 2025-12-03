@@ -29,6 +29,17 @@ public class TestCase {
         this.score = this.orders.size();
     }
 
+    public TestCase(TestCase testCase) {
+        this.orders = Orders.deepCopy(testCase.orders);
+        this.name = testCase.name;
+        this.expectedFields = new ArrayList<>();
+        this.expectedFields.addAll(testCase.expectedFields);
+        this.actualFields = new ArrayList<>();
+        this.actualFields.addAll(testCase.actualFields);
+        this.score = testCase.score;
+        this.eval = testCase.eval;
+    }
+
 
     private void judge() {
 
@@ -94,9 +105,7 @@ public class TestCase {
             return;
 
         List<Integer> indexes = new ArrayList<>();
-        for (int i = 0; i < orders.size(); i++)
-            indexes.add(i);
-
+        Collections.addAll(indexes, Constants.range(orders.size()));
         Collections.shuffle(indexes);
 
         List<Order> orders_New              = new ArrayList<>();
@@ -160,7 +169,17 @@ public class TestCase {
         return score;
     }
 
-    public int getSize() { return orders.size(); }
+    public int getSize() {
+        return orders.size();
+    }
+
+    public List<boolean[]> getExpectedFields() {
+        return expectedFields;
+    }
+
+    public List<boolean[]> getActualFields() {
+        return actualFields;
+    }
 
 
     public void printEval() {

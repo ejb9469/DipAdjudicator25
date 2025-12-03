@@ -1,11 +1,6 @@
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
 public class TestCaseManager {
-
-
-    public static final boolean USE_REFEREE = false;
 
 
     private final List<TestCase> testCases;
@@ -87,12 +82,37 @@ public class TestCaseManager {
         Collection<TestCase> testCases = fileParser.parseMany();
         manager.testCases.addAll(new ArrayList<>(testCases));
         System.out.println("\n----------------------------------------\n");
+
+        // REFEREE MODE //
+        // TODO: Make new `Referee.java` using below code as base
+        int NUM_TRIALS  = 2500;
+        Map<TestCase, Collection<Set<Order>>> refereeSimul = new HashMap<>();
+        Collection<Set<Order>> permutations;
         for (TestCase testCase : manager.testCases) {
-            //  TODO: Variable output when un-commenting below line indicates...
-            //      1. `Referee.java` is non-functional: FIX!! (easy)
-            //      2. Underlying `Judge.java` algorithm is inconsistent: RESEARCH & FIX!! (hard)
-            //      3. Some non-paradox test cases fail depending on order of orders: IMPROVE CATEGORIES!!
-            //testCase.shuffle();
+            permutations = new HashSet<>();
+            for (int i = 1; i <= NUM_TRIALS; i++) {
+                // (deep) clone the testcase + its orders:
+                // ... twice as fast to do this vs. using 1 test case for all trials, but terribly large heap store
+                TestCase testCaseClone = new TestCase(testCase);
+                testCaseClone.shuffle();  // generate a random permutation
+                testCaseClone.eval();     // evaluate the testcase
+                // will only truly add to `permutations` if the resolution is unique,
+                // ... because we are using a Set [equality determined by `Order::hashcode()`]
+                permutations.add(new HashSet<>(Set.copyOf(
+                        Orders.deepCopy(testCaseClone.getOrders()))));
+            }
+            refereeSimul.put(testCase, permutations);
+        }
+
+        System.out.println("REFEREE SIMUL TESTING:\n");
+        for (TestCase testCase : refereeSimul.keySet()) {
+            System.out.printf("[P=%d]\t%s\n", refereeSimul.get(testCase).size(), testCase.getName());
+        }
+
+        System.out.println("----------------------------------------\n");
+        System.out.println("ONE-OFF TESTING:\n");
+        for (TestCase testCase : manager.testCases) {
+            //testCase.shuffle();  // uncomment for randomly-ordered Order List
             testCase.eval(manager.willPrint());
         }
 
@@ -108,55 +128,7 @@ public class TestCaseManager {
         System.out.printf("TOTAL SCORE (by Orders):\t\t[%d/%d]\n", manager.ordersScore(), manager.ordersSize());
         System.out.println("----------------------------------------\n");
 
-        if (USE_REFEREE) {
-
-            System.out.println();
-            manager.testCases.clear();
-            manager.testCases.addAll(new ArrayList<>(testCases));
-
-            for (TestCase testCase : manager.testCases) {
-
-                for (Order order : testCase.getOrders())
-                    order.wipeMetaInf();
-
-                int k = testCase.getOrders().size();
-                try {
-                    Referee referee = new Referee(testCase);
-                    referee.judge();
-                    if (manager.willPrint()) {
-                        int p = referee.resolutions.size();
-                        String ANSI1, ANSI2;
-                        if (p > 1) {
-                            ANSI1 = Constants.ANSI_YELLOW;
-                            ANSI2 = Constants.ANSI_ORANGE;
-                        } else {
-                            ANSI1 = Constants.ANSI_BRIGHTWHITE;
-                            ANSI2 = Constants.ANSI_RESET;
-                        }
-                        System.out.printf("%s[P=%d]%s (k=%d) \t%s%s%s\n",
-                                ANSI1, p, ANSI2,
-                                k,
-                                TestCase.TESTCASE_PREFIX, testCase.getName(),
-                                Constants.ANSI_RESET);
-                    }
-                } catch (TooIntensiveException ex) {
-                    if (manager.willPrint())
-                        System.out.printf("%s[P=?] (k=%d) \t%s%s\n\t%s%s%s\n",
-                                Constants.ANSI_YELLOW, k,
-                                TestCase.TESTCASE_PREFIX, testCase.getName(),
-                                Constants.ANSI_RED, ex.getMessage(), Constants.ANSI_RESET);
-                    else
-                        System.err.printf("[P=?] (k=%d) \t%s%s\n\t%s\n",
-                                k, TestCase.TESTCASE_PREFIX, testCase.getName(), ex.getMessage());
-                }
-
-            }
-
-            Constants.printTimestamp();
-
-        }
-
-        // Blah
+        // Blah //
 
         Constants.printTimestamp();
 

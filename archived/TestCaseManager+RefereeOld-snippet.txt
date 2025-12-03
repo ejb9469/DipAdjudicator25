@@ -1,0 +1,47 @@
+if (USE_REFEREE) {
+
+            System.out.println();
+            manager.testCases.clear();
+            manager.testCases.addAll(new ArrayList<>(testCases));
+
+            for (TestCase testCase : manager.testCases) {
+
+                for (Order order : testCase.getOrders())
+                    order.wipeMetaInf();
+
+                int k = testCase.getOrders().size();
+                try {
+                    RefereeOld referee = new RefereeOld(testCase);
+                    referee.judge();
+                    if (manager.willPrint()) {
+                        int p = referee.resolutions.size();
+                        String ANSI1, ANSI2;
+                        if (p > 1) {
+                            ANSI1 = Constants.ANSI_YELLOW;
+                            ANSI2 = Constants.ANSI_ORANGE;
+                        } else {
+                            ANSI1 = Constants.ANSI_BRIGHTWHITE;
+                            ANSI2 = Constants.ANSI_RESET;
+                        }
+                        System.out.printf("%s[P=%d]%s (k=%d) \t%s%s%s\n",
+                                ANSI1, p, ANSI2,
+                                k,
+                                TestCase.TESTCASE_PREFIX, testCase.getName(),
+                                Constants.ANSI_RESET);
+                    }
+                } catch (TooIntensiveException ex) {
+                    if (manager.willPrint())
+                        System.out.printf("%s[P=?] (k=%d) \t%s%s\n\t%s%s%s\n",
+                                Constants.ANSI_YELLOW, k,
+                                TestCase.TESTCASE_PREFIX, testCase.getName(),
+                                Constants.ANSI_RED, ex.getMessage(), Constants.ANSI_RESET);
+                    else
+                        System.err.printf("[P=?] (k=%d) \t%s%s\n\t%s\n",
+                                k, TestCase.TESTCASE_PREFIX, testCase.getName(), ex.getMessage());
+                }
+
+            }
+
+            Constants.printTimestamp();
+
+        }

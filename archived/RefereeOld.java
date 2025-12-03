@@ -1,6 +1,8 @@
+package deprecated;
+
 import java.util.*;
 
-public class Referee extends Judge {
+public class RefereeOld extends Judge {
 
     public static final boolean DEBUG_PRINT = false;
 
@@ -11,24 +13,24 @@ public class Referee extends Judge {
     // ... the permutation algorithm can be improved.
     public static final int MAX_K = 10;
 
-    protected final   TestCase                                  testCase;
+    protected final TestCase testCase;
     protected final   Collection<List<Order>>                   permutations;
     protected final   Map<Set<Order>, Collection<List<Order>>>  resolutions  = new HashMap<>();
 
 
-    public Referee() {
+    public RefereeOld() {
         super();
         this.testCase = null;
         this.permutations = new HashSet<>();
     }
 
-    public Referee(Collection<Order> orders) throws TooIntensiveException {
+    public RefereeOld(Collection<Order> orders) throws TooIntensiveException {
         super(orders);
         this.testCase = null;
         this.permutations = generateOrderListingPermutations((List<Order>) orders);
     }
 
-    public Referee(TestCase testCase) throws TooIntensiveException {
+    public RefereeOld(TestCase testCase) throws TooIntensiveException {
         super(testCase.getOrders());
         this.testCase = testCase;
         this.permutations = generateOrderListingPermutations(testCase.getOrders());
@@ -84,7 +86,7 @@ public class Referee extends Judge {
     }
 
 
-    protected Collection<List<Order>> generateOrderListingPermutations(List<Order> ordersList) {
+    public static Collection<List<Order>> generateOrderListingPermutations(List<Order> ordersList) {
 
         /* Ideas to improve the permutation algorithm (to allow for greater `ordersList` sizes):
         *       1. Rewrite it iteratively.
