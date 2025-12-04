@@ -86,7 +86,7 @@ public class TestCaseManager {
         // REFEREE MODE //
         // TODO: Make new `Referee.java` using below code as base
         int NUM_TRIALS  = 2500;
-        Map<TestCase, Collection<Set<Order>>> refereeSimul = new HashMap<>();
+        Map<TestCase, Collection<Set<Order>>> refereeSimul = new HashMap<>(manager.testCases.size());
         Collection<Set<Order>> permutations;
         for (TestCase testCase : manager.testCases) {
             permutations = new HashSet<>();
@@ -108,6 +108,17 @@ public class TestCaseManager {
         for (TestCase testCase : refereeSimul.keySet()) {
             System.out.printf("[P=%d]\t%s\n", refereeSimul.get(testCase).size(), testCase.getName());
         }
+
+        System.out.println("\n----------------------------------------");
+        System.out.println("REFEREE SIMUL TESTING - PARADOX CASES:\n");
+        Map<TestCase, Collection<Set<Order>>> refereeSimulParadoxes = new HashMap<>();
+        for (TestCase testCase : refereeSimul.keySet()) {
+            if (refereeSimul.get(testCase).size() > 1) {
+                refereeSimulParadoxes.put(testCase, refereeSimul.get(testCase));
+                System.out.printf("[P=%d]\t%s\n", refereeSimul.get(testCase).size(), testCase.getName());
+            }
+        }
+        
 
         System.out.println("----------------------------------------\n");
         System.out.println("ONE-OFF TESTING:\n");

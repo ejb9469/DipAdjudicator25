@@ -190,7 +190,12 @@ public class Order {
 
     }
 
-    // TODO: Documentation needed!
+    /**
+     * Returns a hash code value for this object.<br>
+     * This method is supported for the benefit of hash tables such as those provided by `java.util.HashMap`.<br>
+     * Note: this particular implementation violates the general contract for `hashcode()` according to JDocs for `Object::hashcode()`
+     * @return Hash code of this Order's principal fields, AND both resolved & verdict
+     */
     @Override
     public int hashCode() {
         return Objects.hash(this.owner, this.unitType, this.orderType,
