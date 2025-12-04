@@ -61,6 +61,11 @@ public class Judge {
      */
     public void judge() {
 
+        // reset meta resolve values
+        this.cycle = new ArrayList<>();
+        this.recursionHits = 0;
+        this.uncertain = false;
+
         // TODO: The precise OOP of the `judge()` func is largely 'placeholder', and (usually) only matters for Paradoxes.
         //       We will need to "meta-resolve" Order Lists containing (certain? most? all?) Paradoxes regardless --
         //          -- which should be implemented on its own 'layer'.

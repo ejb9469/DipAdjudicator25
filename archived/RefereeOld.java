@@ -1,5 +1,3 @@
-package deprecated;
-
 import java.util.*;
 
 public class RefereeOld extends Judge {
