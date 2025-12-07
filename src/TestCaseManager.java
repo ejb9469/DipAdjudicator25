@@ -76,6 +76,7 @@ public class TestCaseManager {
 
     public static void main(String[] args) {
 
+        System.out.println();
         Constants.printTimestamp();
 
         TestCaseManager manager = new TestCaseManager(true);

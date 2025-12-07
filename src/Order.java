@@ -201,7 +201,7 @@ public class Order implements Comparable<Order> {
      *
      * Note: this particular implementation actually violates the general contract for `hashcode()` (according to JDocs for `Object::hashcode()`)
      *
-     * @return Hash code of this Order's principal fields, AND both resolved & verdict
+     * @return Hash code of this Order's principal fields, AND both `resolved` & `verdict`
      */
     @Override
     public int hashCode() {
