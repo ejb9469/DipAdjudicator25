@@ -1,0 +1,83 @@
+// find order set with most `resolved=true`
+                Set<Order>      mostResolvedPerm        = new HashSet<>();  // blank instead of null
+                Set<Set<Order>> otherMostResolvedPerms  = new HashSet<>();
+                int             mostNumResolved         = -1;
+                boolean         tie                     = false;
+
+                for (Set<Order> permutation : permutations) {
+                    int numResolved = 0;
+                    for (Order order : permutation)
+                        numResolved += (order.resolved ? 1 : 0);  // 1 if true, 0 if false (ternary operator)
+                    if (mostResolvedPerm.isEmpty() || numResolved > mostNumResolved) {
+                        mostResolvedPerm = permutation;
+                        mostNumResolved = numResolved;
+                        tie = false;
+                        otherMostResolvedPerms.clear();
+                    } else if (numResolved == mostNumResolved) {
+                        tie = true;
+                        otherMostResolvedPerms.add(permutation);
+                    }
+                }
+
+                if (tie) {
+
+                    // It seems that we (only) arrive here in three (3) different multi-layered paradox Test Case situations:
+                    /*
+                        1. 6.E.11. NO SELF DISLODGEMENT WITH BELEAGUERED GARRISON,
+                                    UNIT SWAP WITH ADJACENT CONVOYING AND TWO COASTS
+                        2. 6.F.18. BETRAYAL PARADOX
+                        3. 6.F.21. DAD'S ARMY CONVOY
+                     */
+                    // In all cases, another 'layered' Szykman backup rule should be applied!
+
+                    otherMostResolvedPerms.add(mostResolvedPerm);
+
+                    Set<Order>      mostResolvedPermPrime        = new HashSet<>();
+                    Set<Set<Order>> otherMostResolvedPermsPrime  = new HashSet<>();
+                    int             mostNumVerdict               = -1;
+                    boolean         tieAgain                     = false;
+
+                    for (Set<Order> permutation : otherMostResolvedPerms) {
+                        int numVerdict = 0;
+                        for (Order order : permutation)
+                            numVerdict += (order.verdict ? 1 : 0);
+                        if (mostResolvedPermPrime.isEmpty() || numVerdict > mostNumVerdict) {
+                            mostResolvedPermPrime = permutation;
+                            mostNumVerdict = numVerdict;
+                            tieAgain = false;
+                            otherMostResolvedPermsPrime.clear();
+                        } else if (numVerdict == mostNumVerdict) {
+                            tieAgain = true;
+                            otherMostResolvedPermsPrime.add(permutation);
+                        }
+                    }
+
+                    otherMostResolvedPermsPrime.add(mostResolvedPermPrime);
+                    mostResolvedPerm = Set.copyOf(this.szykmanRule(otherMostResolvedPermsPrime));
+
+                    this.orders = new ArrayList<>(List.copyOf(Orders.deepCopy(mostResolvedPerm)));
+                    for (Order order : this.orders)
+                        order.wipeMetaInf();
+                    super.judge();
+                    mostResolvedPerm = new HashSet<>(Set.copyOf(this.orders));
+
+                    /*if (!tieAgain) {
+
+                        // Satisfies 6.E.11. [Giant]
+                        mostResolvedPerm = mostResolvedPermPrime;
+
+                    } else {
+
+                        otherMostResolvedPermsPrime.add(mostResolvedPermPrime);
+                        mostResolvedPerm = Set.copyOf(this.szykmanRule(otherMostResolvedPermsPrime));
+
+                        this.orders = new ArrayList<>(List.copyOf(Orders.deepCopy(mostResolvedPerm)));
+                        super.judge();
+                        return;
+
+                    }*/
+
+                }
+
+                // populate the new order set with the winner
+                heuristicOrders = mostResolvedPerm;

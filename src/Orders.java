@@ -20,7 +20,6 @@ public abstract class Orders {
             case MOVE -> {
                 if (order.pos2 != null)
                     // Move orders do not have a `pos2` location; if it is not null, it is improperly set
-                    // TODO: Is this behavior more appropriate in `StrictJudge`??
                     return false;
                 if (Province.equalsIgnoreCoast(order.pos0, order.pos1))
                     // Units cannot order to their own location
@@ -249,6 +248,13 @@ public abstract class Orders {
 
     }
 
+    /**
+     * Searches for & returns all Support & Convoy orders corresponding to a given Move / Hold Order
+     * @param moveOrHoldOrder Move or Hold Order
+     * @param locateSupportsFromMove placeholder boolean for diff. method signature: true calls this function, false calls the sister function
+     * @param orders Collection of Orders to search
+     * @return Collection of Orders matching the specifications of `moveOrHoldOrder`
+     */
     public static Collection<Order> locateCorresponding(Order moveOrHoldOrder, boolean locateSupportsFromMove, Collection<Order> orders) {
 
         if (!locateSupportsFromMove) {
@@ -320,12 +326,18 @@ public abstract class Orders {
         return (new HashSet<>(orders)).stream().map(Order::new).collect(Collectors.toSet());
     }
 
-    public static Set<Order> diff(Collection<Collection<Order>> ordersBag) {
+    /**
+     * Computes a new Set of unique Orders in a given 2D Collection
+     * @param ordersBag Collection of Orders Collections
+     * @return A new Set of all unique Orders in 2D Collection `ordersBag`
+     */
+    public static Set<Order> uniq(Collection<Collection<Order>> ordersBag) {
 
         Set<Order> finalBag = new HashSet<>();
 
         for (Collection<Order> orders : ordersBag) {
             for (Order order : orders) {
+
                 for (Collection<Order> orders2 : ordersBag) {
                     if (orders2 == orders) continue;
                     if (!orders2.contains(order)) {
@@ -333,10 +345,52 @@ public abstract class Orders {
                         break;
                     }
                 }
+
             }
         }
 
         return finalBag;
+
+    }
+
+    /**
+     * 'Conforms' the order of elements in `orders` to the order in `orderedOrders`.<br>
+     * Returns the result; this method does not mutate either Collection.<br><br>
+     *
+     * Element equality is derived from UNIT POSITION (`pos0`) only
+     *
+     * @param orders Collection of Orders (used for content)
+     * @param orderedOrders <i><u>List</u></i> of Orders (used for ordering)
+     * @return A new List containing the elements of [Collection `orders`] in the order of [List `orderedOrders`]
+     */
+    public static List<Order> conformOrder(Collection<Order> orders, List<Order> orderedOrders) {
+
+        // null for either field returns back null always, so that NullPointerException will be thrown above
+        if (orders == null || orderedOrders == null)
+            return null;
+
+        // Don't allow the function to proceed if the sizes mismatch
+        else if (orders.size() != orderedOrders.size())
+            throw new IllegalStateException(String.format(
+                    "[`static List<Order> %s::conformOrder(Collection<Order>, List<Order>)`]\n\t==>collection size mismatch! (orders.length=%d, orderedOrders.length=%d)\n",
+                    "Orders", orders.size(), orderedOrders.size()));
+
+        // reflect back an empty list if Orders is empty
+        else if (orders.isEmpty())
+            return new ArrayList<>();
+
+        // conform `orders` to the order of elements in `orderedOrders`
+        Order[] ordersArr = new Order[orders.size()];  // arrays are the most efficient solution here
+        for (Order order : orders) {
+            for (int i = 0; i < orderedOrders.size(); i++) {
+                if (order.pos0 == orderedOrders.get(i).pos0) {
+                    ordersArr[i] = order;
+                    break;
+                }
+            }
+        }
+
+        return new ArrayList<>(Arrays.asList(ordersArr));
 
     }
 

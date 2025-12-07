@@ -2,12 +2,15 @@ import java.util.*;
 
 /**
  * The `Judge` class holds a Collection of Orders, and contains the Adjudication & Resolution logic required to definitively process them all in sequence:
- * see `Judge.judge(...)`<br><br>
+ *      see `Judge.judge(...)`<br><br>
  *
  * Utilizes a duplex recursive algorithm, where `resolve(...)` handles dependency logic i.e. <i>"resolution via deduction"</i>,
- * and `adjudicate(...)` handles board logic i.e. <i>"resolution via force"</i>
+ *      and `adjudicate(...)` handles board logic i.e. <i>"resolution via force"</i>
+ *
+ * @author Evan B
  */
 public class Judge {
+
 
     public static final boolean DEBUG_PRINT = true;
 
@@ -16,6 +19,7 @@ public class Judge {
         // a. An order that is not indirectly dependent on itself
         // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
         // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
+
 
     protected Collection<Order> orders;
 
@@ -48,11 +52,14 @@ public class Judge {
 
 
     /**
-     * <i><u>Definitively</u></i> resolves the Collection of Orders `orders`.<br><br>
+     * Definitively resolves the Collection of Orders `orders`.<br><br>
      *
-     * Acquires Orders' resolution 'verdicts' by calling top-level `resolve(...)` 2x per Order:<br>
+     * Will handle some paradoxes, but not the more complex ones.<br>
+     * For more sophisticated paradox handling, using `Referee.java`<br><br>
+     *
+     * Acquires Orders' resolution 'verdicts' by calling top-level `resolve(...)` 3x per Order:<br>
      *      ~ 1st Mass-Resolve: sets each `order.verdict` to the output of the call `resolve(order, optimistic=true)`<br>
-     *      ~ 2nd Mass-Resolve: does not directly set `order.verdict`, but still calls `resolve(order, optimistic=true)` for each order
+     *      ~ 2nd (& 3rd) Mass-Resolve: does not directly set `order.verdict`, but still calls `resolve(order, optimistic=true)` for each order
      *
      * @postcondition Every order in `orders` is definitively resolved and has a verdict<br>
      *                (Note: This should be enough information to infer dislodgement status)
@@ -66,15 +73,10 @@ public class Judge {
         this.recursionHits = 0;
         this.uncertain = false;
 
-        // TODO: The precise OOP of the `judge()` func is largely 'placeholder', and (usually) only matters for Paradoxes.
-        //       We will need to "meta-resolve" Order Lists containing (certain? most? all?) Paradoxes regardless --
-        //          -- which should be implemented on its own 'layer'.
-        //       i.e. The order of elements of Order Lists matters when dealing with (certain? most? all?) paradoxical situations
-        //       For more information, see `TestCaseManager.java`'s use of `TestCase.shuffle()` (and the implementation of `TestCase.shuffle` itself)
+        //      DEFAULT IMPLEMENTATION:     \\
+        // [1 Hard Resolve + 2 Soft Resolve]
 
-        // DEFAULT IMPLEMENTATION: \\  [1 Hard Resolve + 1 Soft Resolve]
-
-        Collection<Order> ordersCopy = Orders.deepCopy(this.orders);
+        Collection<Order> ordersCopy = new ArrayList<>(Orders.deepCopy(this.orders));
 
         // 1st run :: HARD RESOLVE
         for (Order order : orders)
@@ -86,7 +88,7 @@ public class Judge {
 
         // Detect Szykman rule overriding an Order(s) with HOLDs,
         // ... in this case, run through the judging process again
-        if (!Orders.diff(List.of(ordersCopy, this.orders)).isEmpty()) {
+        if (!Orders.uniq(List.of(ordersCopy, this.orders)).isEmpty()) {
 
             for (Order order : orders)
                 order.wipeMetaInf();
@@ -101,6 +103,9 @@ public class Judge {
 
         }
 
+        // 3rd run :: SOFT RESOLVE
+        for (Order order : orders)
+            resolve(order, true);
 
     }
 
@@ -351,16 +356,16 @@ public class Judge {
      *
      * Determines result based on preexisting Order state information (`order.resolved` & `order.verdict`) and `optimistic`/pessimistic heuristic.<br>
      * Does not know anything about the underlying adjudication equations;<br>
-     * Instead, calls `adjudicate(order, ...)` 1-2 times per Order to determine adjudication results.<br>
+     * Instead, calls `adjudicate(order, ...)` 1+ times per Order to determine adjudication results.<br>
      * These calls may, in turn, call `resolve(order2, ...)` to determine the status of dependent orders.
      *
      * @param order Order to resolve
      * @param optimistic Whether to resolve (& adjudicate) for the best-case or worst-case of `order`
      * @return 'Best guess' as to the verdict of `order`
      *
-     * @author Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>,
-     * <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)
-     * @author revised by Evan B
+     * @author algorithm by Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>
+     * <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)<br>
+     * @author implementation by Evan B
      */
     private boolean resolve(Order order, boolean optimistic) {
 
@@ -451,6 +456,10 @@ public class Judge {
      * ... OR there are Convoy orders present in the chain, in which case, call the Szykman Rule method / subroutine (force all paradoxical Convoys to hold).
      *
      * @param cyclicalOrders List of cyclic Order dependencies
+     *
+     * @author algorithm by Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>
+     * <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)<br>
+     * @author implementation by Evan B
      */
     private void backupRule(List<Order> cyclicalOrders) {
 
@@ -474,11 +483,17 @@ public class Judge {
     }
 
     /**
-     * Subroutine of `backupRule(...)`, handles paradoxical Convoy situations by applying the Szykman Rule<br><br>
+     * Subroutine of `backupRule(...)`, handles paradoxical Convoy situations by applying the Szykman Rule.<br><br>
+     *
+     * <i><u>Mutator function!</u></i><br><br>
      *
      * Szykman Rule definition: "All Convoy orders in the paradoxical convoy situation are forced to hold"
      *
      * @param cyclicalOrders List of cyclic Order dependencies
+     *
+     * @author algorithm by Lucas B. Kruijswijk (<a href="https://webdiplomacy.net/doc/DATC_v3_0.html">...</a>
+     * <a href="https://diplom.org/Zine/S2009M/Kruijswijk/DipMath_Chp6.htm">...</a>)<br>
+     * @author implementation by Evan B
      */
     private void szykmanRule(List<Order> cyclicalOrders) {
 

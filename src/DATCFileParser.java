@@ -111,7 +111,7 @@ public class DATCFileParser extends DATCParser implements FileTestCaseParser {
 
     }
 
-    public Collection<TestCase> parseMany() {
+    public Collection<TestCase> parseManyFiles() {
 
         if (this.dirPath.isBlank())
             return null;

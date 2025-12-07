@@ -3,10 +3,10 @@ import java.util.Objects;
 /**
  * The `Order` class is a public-facing class representing a Diplomacy order 'struct'.<br><br>
  *
- * In addition to the relevant data fields, the `Order` class also contains adjudication-related metadata fields --
+ * In addition to the relevant data fields, the `Order` class also contains adjudication-related 'metadata' fields --
  * (i.e. `<i>resolved</i>`, `<i>verdict</i>`, & `<i>visited</i>`) -- and a 'dangling' field <i>bool</i> `<i>dislodged</i>` for general-purpose.
  */
-public class Order {
+public class Order implements Comparable<Order> {
 
     // TODO: Reformat? from class -> record (introduced Java 16; 2021)
 
@@ -29,10 +29,10 @@ public class Order {
 
     protected boolean suppressH2HAdjudication = false;
 
-    // "Original order" field, used if Order is changed during adjudication
-    // ... (for e.g. using Szykman rules)
-    // Will CLONE if .setOriginalOrder() is used
-    // TODO: Quasi-implemented: 11/15/25 --> WIP
+    /** 'SNAPSHOT' aka "Original order" field, used if Order is changed during adjudication...<br>
+     *      ... (for e.g. using Szykman rules)<br><br>
+     *  Will <i>CLONE</i> if .setOriginalOrder() is used
+     */
     private Order originalOrder = null;
 
 
@@ -94,17 +94,22 @@ public class Order {
     }
 
 
+    /**
+     * Wipes all 'metadata' (adjudication-related) fields: e.g. `resolved`, `verdict`,<br>
+     * but not the 'state' fields: e.g. `pos0`, `dislodged`
+     */
     protected void wipeMetaInf() {
+        // DOES NOT WIPE SNAPSHOT INFO!!
         this.resolved = false;
         this.verdict = false;
         this.visited = false;
         this.suppressH2HAdjudication = false;
+        // DOES NOT WIPE SNAPSHOT INFO!!
     }
 
 
     /**
      * Generates & returns a String representation of this Order's unit components (i.e. "no orders")
-     *
      * @return String representation of this Order's unit components
      */
     public String unitToString() {
@@ -116,12 +121,12 @@ public class Order {
 
     /**
      * Formats & returns a String representation of this Order's metadata fields
-     *
      * @return String representation of this Order's metadata fields
      */
     protected String metaToString() {
         return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
+
 
     /**
      * <b>Overridden</b> `toString()` method; generates & returns a String representation of this Order in
@@ -161,7 +166,6 @@ public class Order {
 
     }
 
-
     /**
      * <b>Overridden</b> `equals()` method; compares Object equality with another given Object<br><br>
      *
@@ -191,9 +195,12 @@ public class Order {
     }
 
     /**
-     * Returns a hash code value for this object.<br>
-     * This method is supported for the benefit of hash tables such as those provided by `java.util.HashMap`.<br>
-     * Note: this particular implementation violates the general contract for `hashcode()` according to JDocs for `Object::hashcode()`
+     * <b>Overridden</b> `hashCode()` method: Returns a hash code value for this object.<br><br>
+     *
+     * This method is supported for the benefit of hash tables such as those provided by `java.util.HashMap`.<br><br>
+     *
+     * Note: this particular implementation actually violates the general contract for `hashcode()` (according to JDocs for `Object::hashcode()`)
+     *
      * @return Hash code of this Order's principal fields, AND both resolved & verdict
      */
     @Override
@@ -203,6 +210,20 @@ public class Order {
                             this.dislodged,
                             this.resolved, this.verdict);
         // Notable exceptions: `visited` and `suppressH2HAdjudication` are not computed into the hash
+    }
+
+    /**
+     * This class' implementation of `Comparable.compareTo()`<br><br>
+     *
+     * 'Compares' `this` Order to another Order using an `OrderComparator`,<br>
+     * for the purposes of "petty sorting" (not adj-related)
+     *
+     * @param other other Order to compare with
+     * @return Positive if this Order is 'greater', negative if other Order is 'greater', 0 if equal
+     */
+    @Override
+    public int compareTo(Order other) {
+        return (new OrderComparator()).compare(this, other);
     }
 
 }

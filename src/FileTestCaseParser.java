@@ -6,8 +6,8 @@ import java.util.Collection;
 public interface FileTestCaseParser extends TestCaseParser {
 
     @Override
-    public TestCase                parse(String source);
+    public TestCase             parse(String source);
 
-    public Collection<TestCase>    parseMany();
+    public Collection<TestCase> parseManyFiles();
 
 }

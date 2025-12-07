@@ -1,7 +1,7 @@
 public enum OrderType {
 
-    HOLD,
     MOVE,
+    HOLD,
     SUPPORT,
     CONVOY,
     RETREAT,

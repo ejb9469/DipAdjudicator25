@@ -4,13 +4,14 @@ public class TestCase {
 
     public static final String  TESTCASE_PREFIX = "TEST CASE - ";
 
-    private final List<Order>   orders;
-    private String              name;
+    protected final List<Order>   orders;
+    protected final List<Order>   originalOrders;
+    protected String              name;
 
-    private List<boolean[]>     expectedFields = null;
-    private List<boolean[]>     actualFields = null;
-    private int                 score = 0;
-    private String              eval = null;
+    protected List<boolean[]>     expectedFields = null;
+    protected List<boolean[]>     actualFields = null;
+    protected int                 score = 0;
+    protected String              eval = null;
 
 
     public TestCase(String name, Order... orders) {
@@ -20,6 +21,7 @@ public class TestCase {
         this.orders = new ArrayList<>(ordersList);
         this.actualFields = new ArrayList<>(this.orders.size());
         this.score = this.orders.size();
+        this.originalOrders = Orders.deepCopy(this.orders);
     }
 
     public TestCase(String name, List<Order> orders) {
@@ -27,6 +29,7 @@ public class TestCase {
         this.orders = new ArrayList<>(orders);
         this.actualFields = new ArrayList<>(this.orders.size());
         this.score = this.orders.size();
+        this.originalOrders = Orders.deepCopy(this.orders);
     }
 
     public TestCase(TestCase testCase) {
@@ -38,10 +41,11 @@ public class TestCase {
         this.actualFields.addAll(testCase.actualFields);
         this.score = testCase.score;
         this.eval = testCase.eval;
+        this.originalOrders = testCase.originalOrders;
     }
 
 
-    private void judge() {
+    protected void judge() {
 
         Judge judge;
         if (!orders.isEmpty())
@@ -52,7 +56,7 @@ public class TestCase {
         judge.judge();
 
         for (Order order : judge.getOrders())
-            actualFields.add(new boolean[]{order.verdict});  // Can expand with more fields later
+            actualFields.add(new boolean[]{order.verdict});  // Could expand with more fields later
 
     }
 
@@ -108,7 +112,7 @@ public class TestCase {
         Collections.addAll(indexes, Constants.range(orders.size()));
         Collections.shuffle(indexes);
 
-        List<Order> orders_New              = new ArrayList<>();
+        List<Order> orders_New              = new ArrayList<>(orders.size());
         List<boolean[]> expectedFields_New  = new ArrayList<>();
         List<boolean[]> actualFields_New    = new ArrayList<>();
 
@@ -119,12 +123,43 @@ public class TestCase {
                 actualFields_New.add(actualFields.get(index));
         }
 
+        this.originalOrders.clear();
+        this.originalOrders.addAll(this.orders);
+
         this.orders.clear();
         this.orders.addAll(orders_New);
         this.expectedFields = expectedFields_New;
         this.actualFields = actualFields_New;
 
     }
+
+    /*public void unshuffle() {
+
+        if (originalOrders.isEmpty() || orders.isEmpty() || expectedFields.isEmpty())
+            return;
+
+        List<Order>     orders_New          = new ArrayList<>(orders.size());
+        List<boolean[]> expectedFields_New  = new ArrayList<>();
+        List<boolean[]> actualFields_New    = new ArrayList<>();
+
+        for (Order order : orders) {
+            for (int i = 0; i < originalOrders.size(); i++) {
+                if (order.pos0 == originalOrders.get(i).pos0) {
+                    orders_New.add(order);
+                    expectedFields_New.add(expectedFields.get(i));
+                    if (!actualFields.isEmpty())
+                        actualFields_New.add(actualFields.get(i));
+                    break;
+                }
+            }
+        }
+
+        this.orders.clear();
+        this.orders.addAll(orders_New);
+        this.expectedFields = expectedFields_New;
+        this.actualFields = actualFields_New;
+
+    }*/
 
 
     public void setExpectedFields(boolean[]... fields) {
@@ -161,6 +196,10 @@ public class TestCase {
         return orders;
     }
 
+    public List<Order> getOriginalOrders() {
+        return originalOrders;
+    }
+
     public String getEval() {
         return eval;
     }
@@ -181,6 +220,37 @@ public class TestCase {
         return actualFields;
     }
 
+    public List<boolean[]> getExpectedFieldsUnshuffled(List<Order> ordersList) {
+
+        List<boolean[]> fieldsNew = new ArrayList<>();
+
+        for (Order order : ordersList) {
+            for (int j = 0; j < orders.size(); j++) {
+                if (orders.get(j).equals(order))
+                    fieldsNew.add(expectedFields.get(j));
+            }
+        }
+
+        return fieldsNew;
+
+    }
+
+    public List<boolean[]> getActualFieldsUnshuffled(List<Order> ordersList) {
+
+        List<boolean[]> fieldsNew = new ArrayList<>();
+
+        for (Order order : ordersList) {
+            for (int j = 0; j < orders.size(); j++) {
+                if (orders.get(j).equals(order))
+                    fieldsNew.add(actualFields.get(j));
+            }
+        }
+
+        return fieldsNew;
+
+    }
+
+
 
     public void printEval() {
         System.out.println(eval+"\n\n");
@@ -188,6 +258,13 @@ public class TestCase {
 
     public void printNameAndScore() {
         System.out.printf("[%02d/%02d]\t%s%s\n", this.score, this.orders.size(), TESTCASE_PREFIX, this.getName());
+    }
+
+
+    @Override
+    public String toString() {
+        // added toString() for ease-of-use debugging purposes
+        return name;
     }
 
 }
