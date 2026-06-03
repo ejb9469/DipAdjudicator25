@@ -17,7 +17,7 @@ public class TestCaseReferee extends TestCase {
     }
 
     @Override
-    protected void judge() {
+    public void appointJudge() {
 
         Judge judge;
         if (!orders.isEmpty())
@@ -26,7 +26,7 @@ public class TestCaseReferee extends TestCase {
             judge = new Referee();
 
         judge.judge();
-        judge.orders = Orders.conformOrder(judge.orders, this.orders);
+        judge.orders = OrdersFactory.conformOrder(judge.orders, this.orders);
 
         for (Order order : judge.getOrders())
             actualFields.add(new boolean[]{order.verdict});  // Could expand with more fields later

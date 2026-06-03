@@ -13,11 +13,19 @@ import java.util.*;
 public class Referee extends Judge {
 
 
-    public static final int NUM_TRIALS_DEFAULT = 300;  // good range: [300 <-> 2500]
+    /**
+     * int `NUM_TRIALS_DEFAULT` designates the default # of Order-List permutations generated per run of `Referee::judge()`<br><br>
+     *
+     * <u>recommended values:</u><br>
+     *      fast range (<5s):      [300 <-> 2500]<br>
+     *      medium range (<20s):   [2500 <-> 30k]<br>
+     *      slow range: (<1m):     [30k <-> 100k]
+     */
+    public static final int NUM_TRIALS_DEFAULT = ( (int)Math.pow(10, 4) );
 
 
-    private final int numTrials;
-    protected final Collection<Set<Order>> resolutions;
+    private   final     int                     numTrials;
+    protected final     Collection<Set<Order>>  resolutions;
 
 
     public Referee() {
@@ -62,14 +70,14 @@ public class Referee extends Judge {
     @Override
     public void judge() {
 
-        Collection<Order> originalOrders = new ArrayList<>(Orders.deepCopy(this.orders));
+        ArrayList<Order> originalOrders = new ArrayList<>(OrdersFactory.deepCopy(this.orders));
 
         List<Order> ordersClone;
         for (int trial = 1; trial <= this.numTrials; trial++) {
 
             // deep clone the orders
-            ordersClone = new ArrayList<>(Orders.deepCopy(originalOrders));
-            Collections.shuffle(ordersClone);  // generate a random permutation
+            ordersClone = new ArrayList<>(OrdersFactory.deepCopy(originalOrders));
+            Collections.shuffle(ordersClone /*, Constants.newRandom()*/);  // generate a random permutation
 
             // evaluate
             this.orders = ordersClone;
@@ -77,7 +85,7 @@ public class Referee extends Judge {
             // will only truly add to `resolutions` if the resolution is unique,
             // ... because we are using a Set [equality determined by `Order::hashcode()`]
             resolutions.add(new HashSet<>(Set.copyOf(
-                    Orders.deepCopy(this.orders))));
+                    OrdersFactory.deepCopy(this.orders))));
 
         }
 
@@ -154,7 +162,7 @@ public class Referee extends Judge {
 
                     otherMostResolvedPerms.add(mostResolvedPerm);
                     mostResolvedPerm = Set.copyOf(this.szykmanRule(otherMostResolvedPerms));
-                    this.orders = new ArrayList<>(List.copyOf(Orders.deepCopy(mostResolvedPerm)));
+                    this.orders = new ArrayList<>(List.copyOf(OrdersFactory.deepCopy(mostResolvedPerm)));
                     for (Order order : this.orders)
                         order.wipeMetaInf();
                     super.judge();

@@ -8,112 +8,132 @@ import java.util.*;
  * Each time `PiecePusher::push()` is called, PiecePusher progresses in 3 states: <i>movement</i>, <i>retreats</i>, and <i>"complete"</i>
  *      (builds are handled separately)<br><br>
  * When `PiecePusher::push()` is 'pushing' in the <u>movement</u> phase, the movements are forced / reflected on the board, and retreats are generated.<br>
- * When `PiecePusher::push()` is 'pushing' in the <u>retreats</u> phase, the retreats are forced / reflected on the board. The movement phase Orders remain unaltered.
+ * When `PiecePusher::push()` is 'pushing' in the <u>retreats</u> phase, the retreats are forced / reflected on the board. The movement phase Orders remain unaltered.<br><br>
+ *
+ * <u><b>IMPORTANT:</b></u> Each time `PiecePusher::push()` is called, the current instance of PiecePusher will "LOCK", requiring a new instance to function.
+ * (This is to avoid using "output" Retreats, by contract)
  */
-public class PiecePusher {
+public class PiecePusher implements Lockable {
 
 
-    protected final Collection<Order>       movementPhaseOrders;  // MUST BE EXPLICITLY ASSIGNED VIA CONSTRUCTOR
+    protected final Collection<Order>       movementPhaseOrders;  // must be explicitly assigned via constructor
     protected final Collection<Order>       retreatPhaseOrders;
 
-    protected       Map<Province,UnitType>  unitTypeMap  = null;
-    protected       Map<Province,Nation>    unitOwnerMap = null;
+    protected       Map<Province, Unit>     unitMap;
+
+    private         boolean                 locked = false;
 
 
     public PiecePusher(Collection<Order> movementPhaseOrders) {
         this.movementPhaseOrders = movementPhaseOrders;
         this.retreatPhaseOrders = new HashSet<>();
+        this.unitMap = new EnumMap<>(Province.class);
         initialize(false);
     }
 
     public PiecePusher(Collection<Order> movementPhaseOrders, Collection<Order> retreatPhaseOrders) {
         this.movementPhaseOrders = movementPhaseOrders;
         this.retreatPhaseOrders = retreatPhaseOrders;
+        this.unitMap = new EnumMap<>(Province.class);
         initialize(true);
     }
 
     // constructor helper method
     private void initialize(boolean useRetreatsPos) {
-        this.unitTypeMap = new HashMap<>();
-        this.unitOwnerMap = new HashMap<>();
         Collection<Order> orders;
         if (useRetreatsPos)
             orders = retreatPhaseOrders;
         else
             orders = movementPhaseOrders;
-        for (Order order : orders) {
-            this.unitTypeMap.put(order.pos0, order.unitType);
-            this.unitOwnerMap.put(order.pos0, order.owner);
-        }
+        for (Order order : orders)
+            this.unitMap.put(order.pos0, new Unit(order.owner, order.unitType));
+    }
+
+
+    public Collection<Order> getMovementPhaseOrders() {
+        return movementPhaseOrders;
+    }
+
+    public Collection<Order> getRetreatPhaseOrders() {
+        return retreatPhaseOrders;
+    }
+
+    public Map<Province, Unit> getUnitMap() {
+        return unitMap;
+    }
+
+
+    public void lock() { this.locked = true; }
+
+    public boolean isLocked() {
+        return locked;
     }
 
 
     @SuppressWarnings("PointlessBooleanExpression")
-    protected void push() {
+    public void push() {
 
-        Map<Province,UnitType> unitMap1 = new HashMap<>();
-        Map<Province,Nation>   unitMap2 = new HashMap<>();
+        // Will lock this PiecePusher at the end of this method
+
+        if (this.isLocked())
+            throw new IllegalStateException("`%s::push()` ==> executed in locked state!");
+        // ELSE: below
+
+        Map<Province, Unit> unitMap = new EnumMap<>(Province.class);
 
         if (!retreatPhaseOrders.isEmpty()) {
 
-            for (Order retreatOrder : Orders.pruneForOrderType(OrderType.RETREAT, retreatPhaseOrders)) {
-                if (retreatOrder.verdict == true) {
-                    unitMap1.put(retreatOrder.pos1, retreatOrder.unitType);
-                    unitMap2.put(retreatOrder.pos1, retreatOrder.owner);
-                }
-            }
+            for (Order retreatOrder : Orders.pruneForOrderType(OrderType.RETREAT, retreatPhaseOrders))
+                if (retreatOrder.verdict == true)
+                    unitMap.put(retreatOrder.pos1, new Unit(retreatOrder.owner, retreatOrder.unitType));
 
-            this.unitTypeMap.putAll(unitMap1);
-            this.unitOwnerMap.putAll(unitMap2);
-            return;
-
-        }  // ELSE: below
-
-        Collection<Order> retreats = new ArrayList<>();
-        for (Order order : movementPhaseOrders) {
-
-            if (order.orderType == OrderType.MOVE) {
-                if (order.verdict == true) {
-                    unitMap1.put(order.pos1, order.unitType);
-                    unitMap2.put(order.pos1, order.owner);
-                } else {
-                    // TODO: Check for assailants (?)
-                    unitMap1.put(order.pos0, order.unitType);
-                    unitMap2.put(order.pos0, order.owner);
-                }
-            }
-
-            else if (order.orderType == OrderType.HOLD || order.orderType == OrderType.SUPPORT || order.orderType == OrderType.CONVOY) {
-                if (order.verdict == true) {
-                    unitMap1.put(order.pos0, order.unitType);
-                    unitMap2.put(order.pos0, order.owner);
-                } else {
-                    Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, movementPhaseOrders);
-                    boolean anySuccessfulAssailant = false;
-                    for (Order moveOrder : assailants) {
-                        if (moveOrder.verdict == true) {
-                            anySuccessfulAssailant = true;
-                            Order retreatOrder = new Order(
-                                    moveOrder.owner, moveOrder.unitType, moveOrder.pos1,
-                                    OrderType.RETREAT, null, null);
-                            retreatOrder.dislodged = true;
-                            retreats.add(retreatOrder);
-                            break;  // 2+ units cannot succeed to the same area
-                        }
-                    }
-                    if (!anySuccessfulAssailant) {
-                        unitMap1.put(order.pos0, order.unitType);
-                        unitMap2.put(order.pos0, order.owner);
-                    }
-                }
-            }
+            this.unitMap.putAll(unitMap);
 
         }
 
-        retreatPhaseOrders.addAll(retreats);  // no need to `.clear()`: is already empty
-        this.unitTypeMap.putAll(unitMap1);
-        this.unitOwnerMap.putAll(unitMap2);
+        else {
+
+            Collection<Order> retreats = new ArrayList<>();
+            for (Order order : movementPhaseOrders) {
+
+                if (order.orderType == OrderType.MOVE) {
+                    if (order.verdict == true)
+                        unitMap.put(order.pos1, new Unit(order.owner, order.unitType));
+                    else
+                        // TODO: Check for assailants (?)
+                        unitMap.put(order.pos0, new Unit(order.owner, order.unitType));
+                } else if (order.orderType == OrderType.HOLD || order.orderType == OrderType.SUPPORT || order.orderType == OrderType.CONVOY) {
+                    if (order.verdict == true)
+                        unitMap.put(order.pos0, new Unit(order.owner, order.unitType));
+                    else {
+                        Collection<Order> assailants = Orders.locateUnitsMovingToPosition(order.pos0, movementPhaseOrders);
+                        boolean anySuccessfulAssailant = false;
+                        for (Order moveOrder : assailants) {
+                            if (moveOrder.verdict == true) {
+                                anySuccessfulAssailant = true;
+                                Order retreatOrder = new Order(
+                                        moveOrder.owner, moveOrder.unitType, moveOrder.pos1,
+                                        OrderType.RETREAT, null, null);
+                                retreatOrder.dislodged = true;
+                                retreats.add(retreatOrder);
+                                break;  // 2+ units cannot succeed to the same area
+                            }
+                        }
+                        if (!anySuccessfulAssailant)
+                            unitMap.put(order.pos0, new Unit(order.owner, order.unitType));
+                    }
+                }
+
+            }
+
+            this.retreatPhaseOrders.addAll(retreats);  // no need to `.clear()`: is already empty
+            this.unitMap.putAll(unitMap);
+
+        }
+
+        this.lock();  // LOCK
 
     }
+
 
 }

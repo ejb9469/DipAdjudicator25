@@ -9,7 +9,7 @@ import java.util.*;
  *
  * @author Evan B
  */
-public class Judge {
+public class Judge implements Adjudicator {
 
 
     public static final boolean DEBUG_PRINT = true;
@@ -76,7 +76,7 @@ public class Judge {
         //      DEFAULT IMPLEMENTATION:     \\
         // [1 Hard Resolve + 2 Soft Resolve]
 
-        Collection<Order> ordersCopy = new ArrayList<>(Orders.deepCopy(this.orders));
+        Collection<Order> ordersCopy = new ArrayList<>(OrdersFactory.deepCopy(this.orders));
 
         // 1st run :: HARD RESOLVE
         for (Order order : orders)
@@ -88,7 +88,7 @@ public class Judge {
 
         // Detect Szykman rule overriding an Order(s) with HOLDs,
         // ... in this case, run through the judging process again
-        if (!Orders.uniq(List.of(ordersCopy, this.orders)).isEmpty()) {
+        if (!OrdersFactory.uniq(List.of(ordersCopy, this.orders)).isEmpty()) {
 
             for (Order order : orders)
                 order.wipeMetaInf();

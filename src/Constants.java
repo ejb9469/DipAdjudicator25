@@ -1,7 +1,11 @@
+import java.io.PrintStream;
+import java.security.SecureRandom;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Random;
 
 public abstract class Constants {
+
 
     public static final int STARTING_YEAR = 1901;
 
@@ -29,11 +33,22 @@ public abstract class Constants {
         return range;
     }
 
+    // the purpose of this function is so that RNG implementation remains consistent across the entire program
+    public static Random newRandom() {
+        return ( new SecureRandom() );
+    }
+
     public static void printTimestamp() {
         System.out.println();
         System.out.println(ZonedDateTime.now(
                 ZoneId.of( "America/Montreal" )));
         System.out.println("----------------------------------------\n");
     }
+
+    public static void printIf(PrintStream printStream, String contents, boolean prints) {
+        if (prints)
+            printStream.print(contents);
+    }
+
 
 }

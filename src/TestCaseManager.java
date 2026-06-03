@@ -5,11 +5,11 @@ public class TestCaseManager {
 
     // MODE 0: `Referee.java` implementation
     // MODE 1: pre-Referee implementation
-    public static final short MODE = 0;
+    public static final short       MODE = 0;
 
 
-    protected final List<TestCase> testCases;
-    protected final boolean prints;
+    protected final List<TestCase>  testCases;
+    protected final boolean         prints;
 
 
     public TestCaseManager() {
@@ -63,14 +63,14 @@ public class TestCaseManager {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
         if (evalNow)
-            testCase.eval(this.prints);
+            testCase.evaluate(this.prints);
     }
 
     public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
         if (evalNow)
-            testCase.eval(this.prints);
+            testCase.evaluate(this.prints);
     }
 
 
@@ -97,13 +97,13 @@ public class TestCaseManager {
                     TestCaseReferee testCaseRef = new TestCaseReferee(testCase);
                     testCaseRefs.add(testCaseRef);
                     //testCaseRef.shuffle();  // uncomment for randomly-ordered Order List
-                    testCaseRef.eval(manager.willPrint());
+                    testCaseRef.evaluate(manager.willPrint());
                 }
 
                 System.out.println("----------------------------------------\n");
-                for (TestCaseReferee testCase : testCaseRefs) {
-                    testCase.printNameAndScore();
-                    if (testCase.getScore() != testCase.getSize())
+                for (TestCaseReferee testCaseRef : testCaseRefs) {
+                    testCaseRef.printNameAndScore();
+                    if (testCaseRef.getScore() != testCaseRef.getSize())
                         System.out.println(Constants.ANSI_RED + "\tFAILED!!" + Constants.ANSI_RESET);  // red color ANSI code (then black)
                 }
 
@@ -130,11 +130,11 @@ public class TestCaseManager {
                         // ... twice as fast to do this vs. using 1 test case for all trials, but terribly large heap store
                         TestCase testCaseClone = new TestCase(testCase);
                         testCaseClone.shuffle();  // generate a random permutation
-                        testCaseClone.eval();     // evaluate the testcase
+                        testCaseClone.evaluate();     // evaluate the testcase
                         // will only truly add to `permutations` if the resolution is unique,
                         // ... because we are using a Set [equality determined by `Order::hashcode()`]
                         permutations.add(new HashSet<>(Set.copyOf(
-                                Orders.deepCopy(testCaseClone.getOrders()))));
+                                OrdersFactory.deepCopy(testCaseClone.getOrders()))));
                     }
                     refereeSimul.put(testCase, permutations);
                 }
@@ -172,7 +172,7 @@ public class TestCaseManager {
                 System.out.println("ONE-OFF (Judge) TESTING:\n");
                 for (TestCase testCase : manager.testCases) {
                     //testCase.shuffle();  // uncomment for randomly-ordered Order List
-                    testCase.eval(manager.willPrint());
+                    testCase.evaluate(manager.willPrint());
                 }
 
                 System.out.println("----------------------------------------\n");

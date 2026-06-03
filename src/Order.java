@@ -6,9 +6,7 @@ import java.util.Objects;
  * In addition to the relevant data fields, the `Order` class also contains adjudication-related 'metadata' fields --
  * (i.e. `<i>resolved</i>`, `<i>verdict</i>`, & `<i>visited</i>`) -- and a 'dangling' field <i>bool</i> `<i>dislodged</i>` for general-purpose.
  */
-public class Order implements Comparable<Order> {
-
-    // TODO: Reformat? from class -> record (introduced Java 16; 2021)
+public class Order implements Comparable<Order>, Snapshot<Order> {
 
     // Core fields
     public Nation       owner;
@@ -68,16 +66,16 @@ public class Order implements Comparable<Order> {
     }
 
 
-    protected Order getSnapshot() {
+    public Order getSnapshot() {
         return this.originalOrder;
     }
 
-    protected void takeSnapshot() {
+    public void takeSnapshot() {
         this.originalOrder = new Order(this);  // CLONE constructor
         getSnapshot().originalOrder = null;  // avoid infinite reference loop
     }
 
-    protected void restoreFromSnapshot() {
+    public void restoreFromSnapshot() {
 
         this.owner = getSnapshot().owner;
         this.unitType = getSnapshot().unitType;
@@ -123,7 +121,7 @@ public class Order implements Comparable<Order> {
      * Formats & returns a String representation of this Order's metadata fields
      * @return String representation of this Order's metadata fields
      */
-    protected String metaToString() {
+    public String metaToString() {
         return String.format("%s:%b\t%s:%b\t%s:%b", "resolved", resolved, "verdict", verdict, "dislodged", dislodged);
     }
 
@@ -197,7 +195,7 @@ public class Order implements Comparable<Order> {
     /**
      * <b>Overridden</b> `hashCode()` method: Returns a hash code value for this object.<br><br>
      *
-     * This method is supported for the benefit of hash tables such as those provided by `java.util.HashMap`.<br><br>
+     * This method is supported for the benefit of hash tables such as those provided by `HashSet` & `HashMap`.<br><br>
      *
      * Note: this particular implementation actually violates the general contract for `hashcode()` (according to JDocs for `Object::hashcode()`)
      *

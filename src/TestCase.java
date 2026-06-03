@@ -1,6 +1,6 @@
 import java.util.*;
 
-public class TestCase {
+public class TestCase implements Case, Shuffleable {
 
     public static final String  TESTCASE_PREFIX = "TEST CASE - ";
 
@@ -21,7 +21,7 @@ public class TestCase {
         this.orders = new ArrayList<>(ordersList);
         this.actualFields = new ArrayList<>(this.orders.size());
         this.score = this.orders.size();
-        this.originalOrders = Orders.deepCopy(this.orders);
+        this.originalOrders = OrdersFactory.deepCopy(this.orders);
     }
 
     public TestCase(String name, List<Order> orders) {
@@ -29,11 +29,11 @@ public class TestCase {
         this.orders = new ArrayList<>(orders);
         this.actualFields = new ArrayList<>(this.orders.size());
         this.score = this.orders.size();
-        this.originalOrders = Orders.deepCopy(this.orders);
+        this.originalOrders = OrdersFactory.deepCopy(this.orders);
     }
 
     public TestCase(TestCase testCase) {
-        this.orders = Orders.deepCopy(testCase.orders);
+        this.orders = OrdersFactory.deepCopy(testCase.orders);
         this.name = testCase.name;
         this.expectedFields = new ArrayList<>();
         this.expectedFields.addAll(testCase.expectedFields);
@@ -45,7 +45,7 @@ public class TestCase {
     }
 
 
-    protected void judge() {
+    public void appointJudge() {
 
         Judge judge;
         if (!orders.isEmpty())
@@ -61,7 +61,7 @@ public class TestCase {
     }
 
 
-    public void eval(boolean print) {
+    public void evaluate(boolean prints) {
 
         String name = TESTCASE_PREFIX+this.name;
         StringBuilder output = new StringBuilder(name+":\n\n");
@@ -77,7 +77,7 @@ public class TestCase {
             if (expectedFields.size() != orders.size())
                 throw new IndexOutOfBoundsException("`expectedFields.size()` != `orders.size()`");
 
-            this.judge();
+            this.appointJudge();
 
             for (int i = 0; i < orders.size(); i++) {
                 if (!Arrays.equals(expectedFields.get(i), actualFields.get(i)))
@@ -91,15 +91,15 @@ public class TestCase {
             output.append(String.format("\nSCORE: %d/%d", score, orders.size()));
 
             this.eval = output.toString();
-            if (print)
+            if (prints)
                 this.printEval();
 
         }
 
     }
 
-    public void eval() {
-        eval(false);
+    public void evaluate() {
+        evaluate(false);
     }
 
 
