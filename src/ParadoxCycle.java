@@ -3,42 +3,53 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Immutable snapshot of an active recursive dependency cycle detected while
- * adjudicating one collection of Diplomacy orders.<br>
+ * Immutable record of one recursive dependency cycle detected while
+ * adjudicating a collection of orders.
  *
- * This is deliberately separate from Judge.cycle. Judge.cycle remains part of
- * the legacy resolution-control protocol; ParadoxCycle records the actual
- * active call-chain slice at the instant recursion revisits an active order.
+ * The list retains the actual Order references for diagnostics. The stable key
+ * and convoy flag are captured at construction time because Judge may later
+ * mutate a paradoxical convoy into a Szykman HOLD.
  */
 public final class ParadoxCycle {
 
-
     private final List<Order> members;
+    private final String key;
+    private final boolean containsConvoy;
 
 
     public ParadoxCycle(List<Order> members) {
         this.members = Collections.unmodifiableList(
                 new ArrayList<>(members)
         );
+        this.containsConvoy = calculateContainsConvoy(this.members);
+        this.key = calculateKey(this.members);
     }
 
 
     /**
-     * Returns the exact Order object references that participated in this
-     * recursive cycle. They are not cloned because this record is intended for
-     * use only during one Judge.judge() invocation.
+     * Returns the exact Order references participating in the recursive cycle.
      */
     public List<Order> getMembers() {
         return this.members;
     }
 
     /**
-     * Returns true when at least one member is a convoy order.
-     *
-     * A convoy transformed by the existing Szykman mechanism is also treated as
-     * a convoy if it retains an original-order snapshot.
+     * Returns whether the cycle contained a convoy when it was detected.
      */
     public boolean containsConvoy() {
+        return this.containsConvoy;
+    }
+
+    /**
+     * Returns a stable submitted-order identity key captured when this cycle was
+     * detected. It excludes mutable resolution metadata.
+     */
+    public String key() {
+        return this.key;
+    }
+
+    private static boolean calculateContainsConvoy(List<Order> members) {
+
         for (Order order : members) {
             if (order.orderType == OrderType.CONVOY)
                 return true;
@@ -52,15 +63,11 @@ public final class ParadoxCycle {
         }
 
         return false;
+
     }
 
-    /**
-     * Produces a stable display key for de-duplicating and logging cycles.
-     *
-     * This is based on the submitted-order identity, not resolved/verdict
-     * metadata, since metadata can change during adjudication.
-     */
-    public String key() {
+    private static String calculateKey(List<Order> members) {
+
         List<String> entries = new ArrayList<>();
 
         for (Order order : members) {
@@ -81,28 +88,31 @@ public final class ParadoxCycle {
 
         Collections.sort(entries);
         return String.join("\n", entries);
+
     }
 
     @Override
     public String toString() {
+
         StringBuilder output = new StringBuilder();
 
         output.append("ParadoxCycle[")
                 .append("members=")
-                .append(members.size())
+                .append(this.members.size())
                 .append(", containsConvoy=")
-                .append(containsConvoy())
+                .append(this.containsConvoy)
                 .append("]");
 
-        for (int i = 0; i < members.size(); i++) {
+        for (int i = 0; i < this.members.size(); i++) {
             output.append(System.lineSeparator())
                     .append("  [")
                     .append(i)
                     .append("] ")
-                    .append(members.get(i));
+                    .append(this.members.get(i));
         }
 
         return output.toString();
+
     }
 
 }

@@ -255,33 +255,49 @@ public abstract class Orders {
      * @param orders Collection of Orders to search
      * @return Collection of Orders matching the specifications of `moveOrHoldOrder`
      */
-    public static Collection<Order> locateCorresponding(Order moveOrHoldOrder, boolean locateSupportsFromMove, Collection<Order> orders) {
+    public static Collection<Order> locateCorresponding(    // hardened! (exceptions)
+            Order moveOrHoldOrder,
+            boolean locateSupportsFromMove,
+            Collection<Order> orders
+    ) {
 
         if (!locateSupportsFromMove) {
-
-           Collection<Order> singleton = new ArrayList<>();
-           singleton.add(locateCorresponding(moveOrHoldOrder, orders));
-           return singleton;
-
-        } else {
-
-            if (moveOrHoldOrder.orderType != OrderType.MOVE &&
-                    moveOrHoldOrder.orderType != OrderType.HOLD) {
-                throw new IllegalArgumentException(String.format("`locateCorresponding()` called on non-Move-or-Hold Order: %s", moveOrHoldOrder));
-            }
-
-            Collection<Order> corresponding = new ArrayList<>();
-            for (Order order : orders) {
-                if (order.equals(moveOrHoldOrder) || (order.orderType != OrderType.CONVOY && order.orderType != OrderType.SUPPORT))
-                    continue;
-                if ((moveOrHoldOrder.pos1 == null && order.pos1 == moveOrHoldOrder.pos0 && order.pos2 == null) ||
-                    (moveOrHoldOrder.pos1 != null && order.pos1 == moveOrHoldOrder.pos0 && order.pos2 == moveOrHoldOrder.pos1))
-                    corresponding.add(order);
-            }
-
-            return corresponding;
-
+            throw new IllegalArgumentException(
+                    "`locateCorresponding(moveOrHoldOrder, false, orders)` is "
+                            + "invalid: a MOVE/HOLD cannot be passed to the "
+                            + "Support/Convoy lookup overload. Received: "
+                            + moveOrHoldOrder
+            );
         }
+
+        if (moveOrHoldOrder.orderType != OrderType.MOVE
+                && moveOrHoldOrder.orderType != OrderType.HOLD) {
+            throw new IllegalArgumentException(String.format(
+                    "`locateCorresponding()` called on non-Move-or-Hold Order: %s",
+                    moveOrHoldOrder
+            ));
+        }
+
+        Collection<Order> corresponding = new ArrayList<>();
+
+        for (Order order : orders) {
+            if (order.equals(moveOrHoldOrder)
+                    || (order.orderType != OrderType.CONVOY
+                    && order.orderType != OrderType.SUPPORT)) {
+                continue;
+            }
+
+            if ((moveOrHoldOrder.pos1 == null
+                    && order.pos1 == moveOrHoldOrder.pos0
+                    && order.pos2 == null)
+                    || (moveOrHoldOrder.pos1 != null
+                    && order.pos1 == moveOrHoldOrder.pos0
+                    && order.pos2 == moveOrHoldOrder.pos1)) {
+                corresponding.add(order);
+            }
+        }
+
+        return corresponding;
 
     }
 

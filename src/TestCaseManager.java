@@ -98,8 +98,11 @@ public class TestCaseManager {
 
     public static void main(String[] args) {
 
-        // Random sleep (?)
-
+        /* Random sleep (?)
+            try {
+                Thread.sleep(new Random().nextInt(250, 1250));
+            } catch (InterruptedException ex) {}
+         */
         System.out.println();
         Constants.printTimestamp();
 
@@ -118,10 +121,11 @@ public class TestCaseManager {
         for (TestCase testCase : manager.testCases) {
             String name = testCase.getName();
 
-            if (name.contains("6.E.11")
-                    || name.contains("6.F.17.P")
-                    || name.contains("6.F.23.P")
-                    || name.contains("6.F.24.P")) {
+            if (//name.contains("6.E.11")
+                    /*||*/ name.contains("6.F.17.P")
+                    //|| name.contains("6.F.23.P")
+                    //|| name.contains("6.F.24.P")) {
+            ) {
                 diagnoseRefereeStability(
                         testCase,
                         50,
@@ -354,6 +358,7 @@ public class TestCaseManager {
                         observation.getOccurrences(),
                         observation.getTrialNumbers()
                 );
+                stats.recordCycles(observation.getDetectedCycles());
             }
         }
 
@@ -411,6 +416,8 @@ public class TestCaseManager {
                 );
             }
 
+            stats.printCycles();
+
             System.out.printf("%n%s%n", entry.getKey());
         }
 
@@ -456,6 +463,7 @@ public class TestCaseManager {
         private final Set<Long> seeds;
         private final List<String> provenanceSamples;
         private final List<Order> exampleInputOrder;
+        private final Map<String, ParadoxCycle> detectedCycles;
 
         private CandidateStats(Collection<Order> exampleInputOrder) {
             this.occurrences = 0;
@@ -464,6 +472,7 @@ public class TestCaseManager {
             this.exampleInputOrder = new ArrayList<>(
                     Orders.deepCopy(exampleInputOrder)
             );
+            this.detectedCycles = new TreeMap<>();
         }
 
         private void record(
@@ -480,6 +489,34 @@ public class TestCaseManager {
                 }
                 this.provenanceSamples.add(
                         "seed=" + seed + ", trial=" + trial
+                );
+            }
+        }
+
+        private void recordCycles(Collection<ParadoxCycle> cycles) {
+            for (ParadoxCycle cycle : cycles) {
+                this.detectedCycles.putIfAbsent(cycle.key(), cycle);
+            }
+        }
+
+        private void printCycles() {
+            if (this.detectedCycles.isEmpty()) {
+                System.out.println("Detected convoy/dependency cycles: none");
+                return;
+            }
+
+            System.out.printf(
+                    "Detected convoy/dependency cycles: %d%n",
+                    this.detectedCycles.size()
+            );
+
+            int number = 1;
+
+            for (ParadoxCycle cycle : this.detectedCycles.values()) {
+                System.out.printf(
+                        "  -- CYCLE %d --%n%s%n",
+                        number++,
+                        cycle
                 );
             }
         }

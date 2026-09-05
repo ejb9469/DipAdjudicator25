@@ -37,6 +37,12 @@ public class Judge {
         return orders;
     }
 
+    public Collection<ParadoxCycle> getDetectedParadoxCycles() {
+        return Collections.unmodifiableList(
+                new ArrayList<>(this.detectedParadoxCycles)
+        );
+    }
+
 
     /*
      * Global vars for the `resolve()` func:</u><br>
@@ -50,8 +56,18 @@ public class Judge {
     private int recursionHits = 0;
     private boolean uncertain = false;
 
+    private final List<ParadoxCycle> detectedParadoxCycles = new ArrayList<>();
     /*
-     * Root context for the current Judge.judge() invocation.
+     * The actual active resolveResult(...) call chain.
+     *
+     * This is separate from `cycle`, whose contents are part of the legacy
+     * Kruijswijk resolution-control algorithm. This stack exists only to capture
+     * the exact active dependency slice when recursion revisits an Order.
+     */
+    private final List<Order> resolutionStack = new ArrayList<>();
+
+    /*
+     * Root context for the current `Judge.judge()` invocation.
      *
      * At this stage it is always empty. It is threaded through recursive calls
      * so a later change can safely create branch-local contexts.
@@ -80,6 +96,10 @@ public class Judge {
         this.cycle = new ArrayList<>();
         this.recursionHits = 0;
         this.uncertain = false;
+
+        this.detectedParadoxCycles.clear();
+        this.resolutionStack.clear();
+
         this.rootContext = ResolutionContext.empty();
 
         //      DEFAULT IMPLEMENTATION:     \\
@@ -564,7 +584,14 @@ public class Judge {
         }
 
         if (order.visited) {
-            // We hit a cyclic dependency.
+            /*
+             * We hit an Order already active in this recursive call chain.
+             * Record the active-stack slice for Referee diagnostics before the legacy
+             * cycle bookkeeping changes it.
+             */
+            this.recordDetectedParadoxCycle(order);
+
+            // Legacy resolution-control behavior remains unchanged.
             cycle.add(order);
             recursionHits++;
             uncertain = true;
@@ -574,6 +601,7 @@ public class Judge {
         }
 
         order.visited = true;  // Prevent endless recursion; block from recursing to self
+        this.resolutionStack.add(order);
 
         int cycleLen_Old = cycle.size();
         int recursionHits_Old = recursionHits;
@@ -591,6 +619,16 @@ public class Judge {
             pesResult = optResult;
 
         //pesResult = this.adjudicate(order, false);
+
+        int stackLastIndex = this.resolutionStack.size() - 1;
+
+        if (stackLastIndex < 0 || this.resolutionStack.get(stackLastIndex) != order) {
+            throw new IllegalStateException(
+                    "Resolution stack corruption while leaving: " + order
+            );
+        }
+
+        this.resolutionStack.remove(stackLastIndex);
         order.visited = false;  // Un-block recursion for this Order
 
         if (optResult == pesResult) {
@@ -1288,6 +1326,41 @@ public class Judge {
         );
     }
 
+    /**
+     * Captures the active call-stack segment that starts with `revisitedOrder`.
+     *
+     * Identity comparison is required: Order.equals() may compare submitted-order
+     * fields and is not a safe test for locating a specific object on the active
+     * recursive stack.
+     */
+    private void recordDetectedParadoxCycle(Order revisitedOrder) {
+
+        int cycleStart = -1;
+
+        for (int i = 0; i < this.resolutionStack.size(); i++) {
+            if (this.resolutionStack.get(i) == revisitedOrder) {
+                cycleStart = i;
+                break;
+            }
+        }
+
+        if (cycleStart < 0)
+            return;
+
+        ParadoxCycle detectedCycle = new ParadoxCycle(
+                this.resolutionStack.subList(
+                        cycleStart,
+                        this.resolutionStack.size()
+                )
+        );
+
+        for (ParadoxCycle existingCycle : this.detectedParadoxCycles) {
+            if (existingCycle.key().equals(detectedCycle.key()))
+                return;
+        }
+
+        this.detectedParadoxCycles.add(detectedCycle);
+    }
 
     /**
      * Transitional suppression lookup.
