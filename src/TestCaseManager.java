@@ -7,6 +7,12 @@ public class TestCaseManager {
     // MODE 1: pre-Referee implementation
     public static final short MODE = 0;
 
+    /*
+     * Limit printed provenance samples per candidate. The complete candidate
+     * frequency remains available through occurrences and seed counts.
+     */
+    private static final int MAX_PROVENANCE_SAMPLES = 12;
+
 
     protected final List<TestCase> testCases;
     protected final boolean prints;
@@ -25,10 +31,12 @@ public class TestCaseManager {
 
     public int score() {
         int score = 0;
+
         for (TestCase testCase : this.testCases) {
             if (testCase.getScore() == testCase.getOrders().size())
                 score++;
         }
+
         return score;
     }
 
@@ -38,15 +46,19 @@ public class TestCaseManager {
 
     public int ordersScore() {
         int score = 0;
+
         for (TestCase testCase : this.testCases)
             score += testCase.getScore();
+
         return score;
     }
 
     public int ordersSize() {
         int size = 0;
+
         for (TestCase testCase : this.testCases)
             size += testCase.getOrders().size();
+
         return size;
     }
 
@@ -59,16 +71,26 @@ public class TestCaseManager {
     }
 
 
-    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean... expectedFields) {
+    public void addTestCaseWithFields(
+            TestCase testCase,
+            boolean evalNow,
+            boolean... expectedFields
+    ) {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
+
         if (evalNow)
             testCase.eval(this.prints);
     }
 
-    public void addTestCaseWithFields(TestCase testCase, boolean evalNow, boolean[]... expectedFields) {
+    public void addTestCaseWithFields(
+            TestCase testCase,
+            boolean evalNow,
+            boolean[]... expectedFields
+    ) {
         testCase.setExpectedFields(expectedFields);
         this.testCases.add(testCase);
+
         if (evalNow)
             testCase.eval(this.prints);
     }
@@ -76,22 +98,28 @@ public class TestCaseManager {
 
     public static void main(String[] args) {
 
+        // Random sleep (?)
+
         System.out.println();
         Constants.printTimestamp();
 
         TestCaseManager manager = new TestCaseManager(true);
-        FileTestCaseParser fileParser = new DATCFileParser();  // Will grab from "src/testgames/" directory by default
+        FileTestCaseParser fileParser = new DATCFileParser();
 
         Collection<TestCase> testCases = fileParser.parseManyFiles();
         manager.testCases.addAll(new ArrayList<>(testCases));
 
         /*
-         * Temporary diagnostics for the currently failing convoy-paradox cases.
-         * Remove this call after collecting its output; retain the helper method.
+         * Temporary diagnostics for all currently unresolved / unstable cases.
+         *
+         * Remove this invocation after the investigation, but keep
+         * diagnoseRefereeStability(...) for future regressions.
          */
         for (TestCase testCase : manager.testCases) {
             String name = testCase.getName();
-            if (name.contains("6.F.17.P")
+
+            if (name.contains("6.E.11")
+                    || name.contains("6.F.17.P")
                     || name.contains("6.F.23.P")
                     || name.contains("6.F.24.P")) {
                 diagnoseRefereeStability(
@@ -108,105 +136,167 @@ public class TestCaseManager {
 
             case 0 -> {
 
-                // REFEREE MODE //
                 System.out.println("REFEREE ONE-OFF TESTING:\n");
+
                 List<TestCaseReferee> testCaseRefs = new ArrayList<>();
+
                 for (TestCase testCase : manager.testCases) {
-                    TestCaseReferee testCaseRef = new TestCaseReferee(testCase);
+                    TestCaseReferee testCaseRef =
+                            new TestCaseReferee(testCase);
+
                     testCaseRefs.add(testCaseRef);
-                    //testCaseRef.shuffle();  // uncomment for randomly-ordered Order List
                     testCaseRef.eval(manager.willPrint());
                 }
 
                 System.out.println("----------------------------------------\n");
+
                 for (TestCaseReferee testCase : testCaseRefs) {
                     testCase.printNameAndScore();
-                    if (testCase.getScore() != testCase.getSize())
-                        System.out.println(Constants.ANSI_RED + "\tFAILED!!" + Constants.ANSI_RESET);  // red color ANSI code (then black)
+
+                    if (testCase.getScore() != testCase.getSize()) {
+                        System.out.println(
+                                Constants.ANSI_RED
+                                        + "\tFAILED!!"
+                                        + Constants.ANSI_RESET
+                        );
+                    }
                 }
 
                 manager.testCases.clear();
                 manager.testCases.addAll(testCaseRefs);
 
                 System.out.println("\n----------------------------------------");
-                System.out.printf("TOTAL SCORE (by Test Cases):\t[%d/%d]\n", manager.score(), manager.size());
-                System.out.printf("TOTAL SCORE (by Orders):\t\t[%d/%d]\n", manager.ordersScore(), manager.ordersSize());
+                System.out.printf(
+                        "TOTAL SCORE (by Test Cases):\t[%d/%d]%n",
+                        manager.score(),
+                        manager.size()
+                );
+                System.out.printf(
+                        "TOTAL SCORE (by Orders):\t\t[%d/%d]%n",
+                        manager.ordersScore(),
+                        manager.ordersSize()
+                );
                 System.out.println("----------------------------------------\n");
 
             }
 
             case 1 -> {
 
-                // QUASI-REFEREE + JUDGE MODE //
-                int NUM_TRIALS  = Referee.NUM_TRIALS_DEFAULT;
-                Map<TestCase, Collection<Set<Order>>> refereeSimul = new HashMap<>(manager.testCases.size());
+                int NUM_TRIALS = Referee.NUM_TRIALS_DEFAULT;
+
+                Map<TestCase, Collection<Set<Order>>> refereeSimul =
+                        new HashMap<>(manager.testCases.size());
+
                 Collection<Set<Order>> permutations;
+
                 for (TestCase testCase : manager.testCases) {
                     permutations = new HashSet<>();
+
                     for (int i = 1; i <= NUM_TRIALS; i++) {
-                        // (deep) clone the testcase + its orders:
-                        // ... twice as fast to do this vs. using 1 test case for all trials, but terribly large heap store
                         TestCase testCaseClone = new TestCase(testCase);
-                        testCaseClone.shuffle();  // generate a random permutation
-                        testCaseClone.eval();     // evaluate the testcase
-                        // will only truly add to `permutations` if the resolution is unique,
-                        // ... because we are using a Set [equality determined by `Order::hashcode()`]
+                        testCaseClone.shuffle();
+                        testCaseClone.eval();
+
                         permutations.add(new HashSet<>(Set.copyOf(
-                                Orders.deepCopy(testCaseClone.getOrders()))));
+                                Orders.deepCopy(testCaseClone.getOrders())
+                        )));
                     }
+
                     refereeSimul.put(testCase, permutations);
                 }
 
                 System.out.println("REFEREE SIMUL TESTING:\n");
+
                 for (TestCase testCase : refereeSimul.keySet()) {
-                    System.out.printf("[P=%d]\t%s\n", refereeSimul.get(testCase).size(), testCase.getName());
+                    System.out.printf(
+                            "[P=%d]\t%s%n",
+                            refereeSimul.get(testCase).size(),
+                            testCase.getName()
+                    );
                 }
 
                 System.out.println("\n----------------------------------------");
-                System.out.println("REFEREE SIMUL TESTING - PARADOX CASES:\n");
-                Map<TestCase, Collection<Set<Order>>> refereeSimulParadoxes = new HashMap<>();
+                System.out.println(
+                        "REFEREE SIMUL TESTING - PARADOX CASES:\n"
+                );
+
+                Map<TestCase, Collection<Set<Order>>>
+                        refereeSimulParadoxes = new HashMap<>();
+
                 for (TestCase testCase : refereeSimul.keySet()) {
                     if (refereeSimul.get(testCase).size() > 1) {
-                        refereeSimulParadoxes.put(testCase, refereeSimul.get(testCase));
-                        System.out.printf("[P=%d]\t%s\n", refereeSimul.get(testCase).size(), testCase.getName());
+                        refereeSimulParadoxes.put(
+                                testCase,
+                                refereeSimul.get(testCase)
+                        );
+
+                        System.out.printf(
+                                "[P=%d]\t%s%n",
+                                refereeSimul.get(testCase).size(),
+                                testCase.getName()
+                        );
                     }
                 }
-                System.out.printf("\nTOTAL # PARADOXES: [%d]\n", refereeSimulParadoxes.size());
-                // END //
+
+                System.out.printf(
+                        "%nTOTAL # PARADOXES: [%d]%n",
+                        refereeSimulParadoxes.size()
+                );
 
                 System.out.println("----------------------------------------\n");
+
                 Referee ref;
+
                 for (TestCase paradox : refereeSimulParadoxes.keySet()) {
                     ref = new Referee(paradox.getOrders());
                     ref.judge();
+
                     System.out.println(paradox.getName());
-                    for (Order order : ref.getOrders())
-                        System.out.println("\t" + order.toString() + ":\n\t\t" + order.metaToString());
+
+                    for (Order order : ref.getOrders()) {
+                        System.out.println(
+                                "\t" + order + ":\n\t\t"
+                                        + order.metaToString()
+                        );
+                    }
+
                     System.out.println();
                 }
 
-
                 System.out.println("----------------------------------------\n");
                 System.out.println("ONE-OFF (Judge) TESTING:\n");
-                for (TestCase testCase : manager.testCases) {
-                    //testCase.shuffle();  // uncomment for randomly-ordered Order List
+
+                for (TestCase testCase : manager.testCases)
                     testCase.eval(manager.willPrint());
-                }
 
                 System.out.println("----------------------------------------\n");
+
                 for (TestCase testCase : manager.testCases) {
                     testCase.printNameAndScore();
-                    if (testCase.getScore() != testCase.getSize())
-                        System.out.println(Constants.ANSI_RED + "\tFAILED!!" + Constants.ANSI_RESET);  // red color ANSI code (then black)
+
+                    if (testCase.getScore() != testCase.getSize()) {
+                        System.out.println(
+                                Constants.ANSI_RED
+                                        + "\tFAILED!!"
+                                        + Constants.ANSI_RESET
+                        );
+                    }
                 }
 
                 System.out.println("\n----------------------------------------");
-                System.out.printf("TOTAL SCORE (by Test Cases):\t[%d/%d]\n", manager.score(), manager.size());
-                System.out.printf("TOTAL SCORE (by Orders):\t\t[%d/%d]\n", manager.ordersScore(), manager.ordersSize());
+                System.out.printf(
+                        "TOTAL SCORE (by Test Cases):\t[%d/%d]%n",
+                        manager.score(),
+                        manager.size()
+                );
+                System.out.printf(
+                        "TOTAL SCORE (by Orders):\t\t[%d/%d]%n",
+                        manager.ordersScore(),
+                        manager.ordersSize()
+                );
                 System.out.println("----------------------------------------\n");
 
             }
-
         }
 
         Constants.printTimestamp();
@@ -215,11 +305,13 @@ public class TestCaseManager {
 
 
     /**
-     * Runs a test case repeatedly with known seeds and reports whether Referee
-     * produces more than one final outcome.<br><br>
+     * Runs a test case repeatedly with known seeds and reports:
      *
-     * Use this only as a debugging tool for paradoxes. It is intentionally
-     * console-oriented and can remain in the project for future regressions.
+     * - distinct final Referee outcomes;
+     * - distinct raw Judge candidates;
+     * - raw-candidate occurrence frequency;
+     * - seeds and trial samples that produced each candidate; and
+     * - one example shuffled input order for each candidate.
      */
     public static void diagnoseRefereeStability(
             TestCase testCase,
@@ -227,8 +319,9 @@ public class TestCaseManager {
             int numTrials
     ) {
 
-        Set<String> finalOutcomes = new LinkedHashSet<>();
-        Set<String> rawCandidateOutcomes = new LinkedHashSet<>();
+        Set<String> finalOutcomes = new TreeSet<>();
+
+        Map<String, CandidateStats> candidateStats = new TreeMap<>();
 
         for (long seed = 0; seed < numSeeds; seed++) {
 
@@ -240,42 +333,31 @@ public class TestCaseManager {
 
             referee.judge();
 
-            List<String> finalOutcomeLines = new ArrayList<>();
+            finalOutcomes.add(finalOutcomeKey(referee.getOrders()));
 
-            for (Order order : referee.getOrders()) {
-                finalOutcomeLines.add(
-                        order.toString()
-                                + " | resolved=" + order.resolved
-                                + " | verdict=" + order.verdict
-                                + " | snapshot=" + (order.getSnapshot() != null)
+            for (Referee.CandidateObservation observation :
+                    referee.getCandidateObservations()) {
+
+                String candidateKey = outcomeKey(
+                        observation.getRepresentativeResolution()
                 );
-            }
 
-            Collections.sort(finalOutcomeLines);
-            finalOutcomes.add(String.join("\n", finalOutcomeLines));
+                CandidateStats stats = candidateStats.computeIfAbsent(
+                        candidateKey,
+                        ignored -> new CandidateStats(
+                                observation.getExampleInputOrder()
+                        )
+                );
 
-            for (Set<Order> candidateResolution : referee.getCandidateResolutions()) {
-
-                List<String> candidateLines = new ArrayList<>();
-
-                for (Order order : candidateResolution) {
-                    candidateLines.add(
-                            order.toString()
-                                    + " | resolved=" + order.resolved
-                                    + " | verdict=" + order.verdict
-                                    + " | snapshot=" + (order.getSnapshot() != null)
-                    );
-                }
-
-                Collections.sort(candidateLines);
-                rawCandidateOutcomes.add(String.join("\n", candidateLines));
+                stats.record(
+                        seed,
+                        observation.getOccurrences(),
+                        observation.getTrialNumbers()
+                );
             }
         }
 
-        System.out.printf(
-                "%n[%s]%n",
-                testCase.getName()
-        );
+        System.out.printf("%n[%s]%n", testCase.getName());
 
         System.out.printf(
                 "Observed %d final outcome(s) across %d seed(s), %d trial(s) per seed.%n",
@@ -286,17 +368,50 @@ public class TestCaseManager {
 
         System.out.printf(
                 "Observed %d raw candidate resolution(s) before final meta-resolution.%n",
-                rawCandidateOutcomes.size()
+                candidateStats.size()
         );
 
         int candidateNumber = 1;
 
-        for (String candidate : rawCandidateOutcomes) {
+        for (Map.Entry<String, CandidateStats> entry :
+                candidateStats.entrySet()) {
+
+            CandidateStats stats = entry.getValue();
+
             System.out.printf(
-                    "%n--- RAW CANDIDATE %d ---%n%s%n",
-                    candidateNumber++,
-                    candidate
+                    "%n--- RAW CANDIDATE %d ---%n",
+                    candidateNumber++
             );
+
+            System.out.printf(
+                    "Observed %d time(s) across %d seed(s).%n",
+                    stats.occurrences,
+                    stats.seeds.size()
+            );
+
+            System.out.printf(
+                    "Seeds: %s%n",
+                    stats.seeds
+            );
+
+            if (!stats.provenanceSamples.isEmpty()) {
+                System.out.printf(
+                        "Trial samples: %s%n",
+                        stats.provenanceSamples
+                );
+            }
+
+            System.out.println("Example shuffled input order:");
+
+            for (int i = 0; i < stats.exampleInputOrder.size(); i++) {
+                System.out.printf(
+                        "  [%d] %s%n",
+                        i,
+                        stats.exampleInputOrder.get(i)
+                );
+            }
+
+            System.out.printf("%n%s%n", entry.getKey());
         }
 
         int finalNumber = 1;
@@ -308,8 +423,67 @@ public class TestCaseManager {
                     finalOutcome
             );
         }
-
     }
 
+
+    private static String finalOutcomeKey(Collection<Order> orders) {
+        return outcomeKey(orders);
+    }
+
+    private static String outcomeKey(Collection<Order> orders) {
+
+        List<String> lines = new ArrayList<>();
+
+        for (Order order : orders) {
+            lines.add(
+                    order
+                            + " | resolved=" + order.resolved
+                            + " | verdict=" + order.verdict
+                            + " | snapshot="
+                            + (order.getSnapshot() != null)
+            );
+        }
+
+        Collections.sort(lines);
+
+        return String.join("\n", lines);
+    }
+
+
+    private static final class CandidateStats {
+
+        private int occurrences;
+        private final Set<Long> seeds;
+        private final List<String> provenanceSamples;
+        private final List<Order> exampleInputOrder;
+
+        private CandidateStats(Collection<Order> exampleInputOrder) {
+            this.occurrences = 0;
+            this.seeds = new TreeSet<>();
+            this.provenanceSamples = new ArrayList<>();
+            this.exampleInputOrder = new ArrayList<>(
+                    Orders.deepCopy(exampleInputOrder)
+            );
+        }
+
+        private void record(
+                long seed,
+                int occurrencesForSeed,
+                Collection<Integer> trialNumbers
+        ) {
+            this.occurrences += occurrencesForSeed;
+            this.seeds.add(seed);
+            for (int trial : trialNumbers) {
+                if (this.provenanceSamples.size()
+                        >= MAX_PROVENANCE_SAMPLES) {
+                    return;
+                }
+                this.provenanceSamples.add(
+                        "seed=" + seed + ", trial=" + trial
+                );
+            }
+        }
+
+    }
 
 }
