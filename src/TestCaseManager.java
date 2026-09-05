@@ -84,6 +84,24 @@ public class TestCaseManager {
 
         Collection<TestCase> testCases = fileParser.parseManyFiles();
         manager.testCases.addAll(new ArrayList<>(testCases));
+
+        /*
+         * Temporary diagnostics for the currently failing convoy-paradox cases.
+         * Remove this call after collecting its output; retain the helper method.
+         */
+        for (TestCase testCase : manager.testCases) {
+            String name = testCase.getName();
+            if (name.contains("6.F.17.P")
+                    || name.contains("6.F.23.P")
+                    || name.contains("6.F.24.P")) {
+                diagnoseRefereeStability(
+                        testCase,
+                        50,
+                        Referee.NUM_TRIALS_DEFAULT
+                );
+            }
+        }
+
         System.out.println("\n----------------------------------------\n");
 
         switch (MODE) {
@@ -192,6 +210,104 @@ public class TestCaseManager {
         }
 
         Constants.printTimestamp();
+
+    }
+
+
+    /**
+     * Runs a test case repeatedly with known seeds and reports whether Referee
+     * produces more than one final outcome.<br><br>
+     *
+     * Use this only as a debugging tool for paradoxes. It is intentionally
+     * console-oriented and can remain in the project for future regressions.
+     */
+    public static void diagnoseRefereeStability(
+            TestCase testCase,
+            int numSeeds,
+            int numTrials
+    ) {
+
+        Set<String> finalOutcomes = new LinkedHashSet<>();
+        Set<String> rawCandidateOutcomes = new LinkedHashSet<>();
+
+        for (long seed = 0; seed < numSeeds; seed++) {
+
+            Referee referee = new Referee(
+                    new ArrayList<>(Orders.deepCopy(testCase.getOrders())),
+                    numTrials,
+                    seed
+            );
+
+            referee.judge();
+
+            List<String> finalOutcomeLines = new ArrayList<>();
+
+            for (Order order : referee.getOrders()) {
+                finalOutcomeLines.add(
+                        order.toString()
+                                + " | resolved=" + order.resolved
+                                + " | verdict=" + order.verdict
+                                + " | snapshot=" + (order.getSnapshot() != null)
+                );
+            }
+
+            Collections.sort(finalOutcomeLines);
+            finalOutcomes.add(String.join("\n", finalOutcomeLines));
+
+            for (Set<Order> candidateResolution : referee.getCandidateResolutions()) {
+
+                List<String> candidateLines = new ArrayList<>();
+
+                for (Order order : candidateResolution) {
+                    candidateLines.add(
+                            order.toString()
+                                    + " | resolved=" + order.resolved
+                                    + " | verdict=" + order.verdict
+                                    + " | snapshot=" + (order.getSnapshot() != null)
+                    );
+                }
+
+                Collections.sort(candidateLines);
+                rawCandidateOutcomes.add(String.join("\n", candidateLines));
+            }
+        }
+
+        System.out.printf(
+                "%n[%s]%n",
+                testCase.getName()
+        );
+
+        System.out.printf(
+                "Observed %d final outcome(s) across %d seed(s), %d trial(s) per seed.%n",
+                finalOutcomes.size(),
+                numSeeds,
+                numTrials
+        );
+
+        System.out.printf(
+                "Observed %d raw candidate resolution(s) before final meta-resolution.%n",
+                rawCandidateOutcomes.size()
+        );
+
+        int candidateNumber = 1;
+
+        for (String candidate : rawCandidateOutcomes) {
+            System.out.printf(
+                    "%n--- RAW CANDIDATE %d ---%n%s%n",
+                    candidateNumber++,
+                    candidate
+            );
+        }
+
+        int finalNumber = 1;
+
+        for (String finalOutcome : finalOutcomes) {
+            System.out.printf(
+                    "%n--- FINAL OUTCOME %d ---%n%s%n",
+                    finalNumber++,
+                    finalOutcome
+            );
+        }
 
     }
 

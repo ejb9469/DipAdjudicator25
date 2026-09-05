@@ -13,35 +13,70 @@ import java.util.*;
 public class Referee extends Judge {
 
 
-    public static final int NUM_TRIALS_DEFAULT = 300;  // good range: [300 <-> 2500]
+    public static final int NUM_TRIALS_DEFAULT = 300;
 
+    /*
+     * A fixed default makes a test run reproducible. Supply a different seed
+     * through the three-argument constructor when investigating instability.
+     */
+    public static final long SHUFFLE_SEED_DEFAULT = 0xD1A10C4CL;
 
     private final int numTrials;
-    protected final Collection<Set<Order>> resolutions;
+    private final long shuffleSeed;
+
+    /*
+     * Key:     canonical full adjudication outcome, including resolver metadata.
+     * Value:   a representative deep-copied resolution for that key.
+     *
+     * `Order.equals()` intentionally ignores mutable metadata, so `Set<Order>`
+     * equality cannot be used to determine whether two adjudication outcomes
+     * differ only by `verdict`/`resolved` state.
+     */
+    protected final Map<String, Set<Order>> resolutions;
 
 
     public Referee() {
-        super();
-        this.resolutions = new HashSet<>();
-        this.numTrials = NUM_TRIALS_DEFAULT;
+        this(Collections.emptyList(), NUM_TRIALS_DEFAULT, SHUFFLE_SEED_DEFAULT);
     }
 
     public Referee(Collection<Order> orders) {
-        super(orders);
-        this.resolutions = new HashSet<>();
-        this.numTrials = NUM_TRIALS_DEFAULT;
+        this(orders, NUM_TRIALS_DEFAULT, SHUFFLE_SEED_DEFAULT);
     }
 
     public Referee(int numTrials) {
-        super();
-        this.resolutions = new HashSet<>();
-        this.numTrials = numTrials;
+        this(Collections.emptyList(), numTrials, SHUFFLE_SEED_DEFAULT);
     }
 
     public Referee(Collection<Order> orders, int numTrials) {
+        this(orders, numTrials, SHUFFLE_SEED_DEFAULT);
+    }
+
+    /**
+     * Creates a Referee with a known seed, allowing reproducible trial ordering.
+     *
+     * @param orders orders to adjudicate
+     * @param numTrials number of shuffled orderings to examine; must be at least 1
+     * @param shuffleSeed seed used to generate shuffled orderings
+     */
+    public Referee(Collection<Order> orders, int numTrials, long shuffleSeed) {
+
         super(orders);
-        this.resolutions = new HashSet<>();
+
+        if (numTrials < 1)
+            throw new IllegalArgumentException("numTrials must be at least 1");
+
+        //this.resolutions = new LinkedHashMap<>();
+        /*
+         * `TreeMap` (!!) gives every discovered resolution a canonical iteration order.
+         *
+         * This does not decide which Diplomacy rule is correct, but it prevents
+         * random shuffle/discovery order from deciding which candidate is considered
+         * "first" by the meta-resolution implementation.
+         */
+        this.resolutions = new TreeMap<>();
         this.numTrials = numTrials;
+        this.shuffleSeed = shuffleSeed;
+
     }
 
 
@@ -62,81 +97,93 @@ public class Referee extends Judge {
     @Override
     public void judge() {
 
-        Collection<Order> originalOrders = new ArrayList<>(Orders.deepCopy(this.orders));
+        /*
+         * Referee instances may be reused. Do not mix outcomes from an earlier
+         * call to judge() with outcomes from the current order set.
+         */
+        this.resolutions.clear();
 
-        List<Order> ordersClone;
+        /*
+         * Begin from a stable order before shuffling. This ensures that the same
+         * input order set plus the same seed yields the same sequence of trials.
+         */
+        List<Order> originalOrders = new ArrayList<>(Orders.deepCopy(this.orders));
+        originalOrders.sort(new OrderComparator());
+
+        Random random = new Random(this.shuffleSeed);
+
         for (int trial = 1; trial <= this.numTrials; trial++) {
 
-            // deep clone the orders
-            ordersClone = new ArrayList<>(Orders.deepCopy(originalOrders));
-            Collections.shuffle(ordersClone);  // generate a random permutation
+            List<Order> ordersClone = new ArrayList<>(Orders.deepCopy(originalOrders));
+            Collections.shuffle(ordersClone, random);
 
-            // evaluate
             this.orders = ordersClone;
             super.judge();
-            // will only truly add to `resolutions` if the resolution is unique,
-            // ... because we are using a Set [equality determined by `Order::hashcode()`]
-            resolutions.add(new HashSet<>(Set.copyOf(
-                    Orders.deepCopy(this.orders))));
 
+            Set<Order> outcome = new HashSet<>(Orders.deepCopy(this.orders));
+            this.resolutions.putIfAbsent(resolutionKey(outcome), outcome);
         }
 
-        // reset the judge
-        this.orders = originalOrders;
+        // Restore the original input state before selecting the final resolution.
+        this.orders = new ArrayList<>(Orders.deepCopy(originalOrders));
 
         if (resolutions.size() == 1) {
 
-            // set `this.orders` to the 1 and only resolution
-            for (Set<Order> decisiveResolution : resolutions)  // (only runs once; size() == 1)
-                this.orders = decisiveResolution;
+            Set<Order> decisiveResolution = this.resolutions.values().iterator().next();
+            this.orders = new ArrayList<>(Orders.deepCopy(decisiveResolution));
 
         } else if (resolutions.size() > 1) {
 
-           /* The current "A-B-C" REFEREE RULES for multiple resolutions / 'paradoxes' -
-                1. Compound all replacement orders into one set where all Szykman holds are present
-                2. The remaining orders will be taken from:
-                        A) EITHER the merged Szykman set                                    (if "S">1)
-                        B) OR     the (1 and only) Szykman set                              (if S=1)
-                        C) OR     the set with the most # of Orders with `resolved=true`    (if S=0)
-                                    ...if there is a tie, call the 'meta-Szykman' procedure: `Referee::szykmanRule(...)`
-                                        AND call `super::judge()` fresh!
-            */
+            /*
+             * Current A-B-C meta-resolution rules:
+             *
+             * 1. Merge all Szykman replacement holds.
+             * 2. Select remaining orders from:
+             *      A) merged Szykman holds, if there is more than one;
+             *      B) the sole Szykman-containing resolution, if there is one; or
+             *      C) the resolution with the most resolved orders, if there are none.
+             * 3. If rule C ties, use the meta-Szykman procedure and adjudicate again.
+             */
 
-            // add all szykman holds from all permutations / resolutions
             Set<Order> szykmanHolds = new HashSet<>();
             Set<Order> firstSzykmanSet = null;
-            for (Set<Order> resolution : resolutions) {
+
+            for (Set<Order> resolution : resolutions.values()) {
                 for (Order order : resolution) {
                     if (order.getSnapshot() != null) {
                         szykmanHolds.add(order);
+
                         if (firstSzykmanSet == null)
                             firstSzykmanSet = resolution;
                     }
                 }
             }
 
-            // build out the remaining orders from here
             Collection<Order> heuristicOrders = new HashSet<>(szykmanHolds);
 
-            // `S` ==> the # of total Szykman Holds over all resolutions
+            // S = total number of Szykman holds over all discovered outcomes.
             int S = szykmanHolds.size();
+
             if (S == 0) {
 
-                // find order set with most `resolved=true`
-                Set<Order>      mostResolvedPerm        = new HashSet<>();  // blank instead of null
-                Set<Set<Order>> otherMostResolvedPerms  = new HashSet<>();
-                int             mostNumResolved         = -1;
-                boolean         tie                     = false;
+                Set<Order> mostResolvedPerm = new HashSet<>();
+                List<Set<Order>> otherMostResolvedPerms = new ArrayList<>();
+                int mostNumResolved = -1;
+                boolean tie = false;
 
-                for (Set<Order> resolution : resolutions) {
+                for (Set<Order> resolution : resolutions.values()) {
+
                     int numResolved = 0;
+
                     for (Order order : resolution)
-                        numResolved += (order.resolved ? 1 : 0);  // 1 if true, 0 if false (ternary operator)
+                        numResolved += order.resolved ? 1 : 0;
+
                     if (mostResolvedPerm.isEmpty() || numResolved > mostNumResolved) {
                         mostResolvedPerm = resolution;
                         mostNumResolved = numResolved;
                         tie = false;
                         otherMostResolvedPerms.clear();
+
                     } else if (numResolved == mostNumResolved) {
                         tie = true;
                         otherMostResolvedPerms.add(resolution);
@@ -144,53 +191,208 @@ public class Referee extends Judge {
                 }
 
                 if (tie) {
-
-                    /* It seems that we (only) arrive here in three (3) different multi-layered paradox Test Case situations:
-                        1. 6.E.11. NO SELF DISLODGEMENT WITH BELEAGUERED GARRISON,
-                                    UNIT SWAP WITH ADJACENT CONVOYING AND TWO COASTS
-                        2. 6.F.18. BETRAYAL PARADOX
-                        3. 6.F.21. DAD'S ARMY CONVOY                                */
-                    // In all cases, another 'layered' / 'meta-' Szykman backup rule should be applied!
-
                     otherMostResolvedPerms.add(mostResolvedPerm);
-                    mostResolvedPerm = Set.copyOf(this.szykmanRule(otherMostResolvedPerms));
-                    this.orders = new ArrayList<>(List.copyOf(Orders.deepCopy(mostResolvedPerm)));
+
+                    mostResolvedPerm = Set.copyOf(
+                            this.szykmanRule(otherMostResolvedPerms)
+                    );
+
+                    this.orders = new ArrayList<>(
+                            Orders.deepCopy(mostResolvedPerm)
+                    );
+
                     for (Order order : this.orders)
                         order.wipeMetaInf();
+
                     super.judge();
                     mostResolvedPerm = Set.copyOf(this.orders);
-
                 }
 
-                // populate the new order set with the winner
                 heuristicOrders = mostResolvedPerm;
-
 
             } else if (S == 1) {
 
                 heuristicOrders = firstSzykmanSet;
 
+            } else {
 
-            } else /*if (S>1)*/ {
-
+                /*
+                 * Retain the common non-Szykman orders from the first resolution,
+                 * while preserving every discovered Szykman replacement hold.
+                 */
                 for (Order order : firstSzykmanSet) {
-                    boolean found = false;
+
+                    boolean foundSzykmanHoldAtPosition = false;
+
                     for (Order holdOrder : szykmanHolds) {
                         if (holdOrder.pos0 == order.pos0) {
-                            found = true;
+                            foundSzykmanHoldAtPosition = true;
                             break;
                         }
                     }
-                    if (!found)
+
+                    if (!foundSzykmanHoldAtPosition)
                         heuristicOrders.add(order);
                 }
-
             }
 
-            // assign to `this.orders`
-            this.orders = heuristicOrders;
-
+            this.orders = new ArrayList<>(Orders.deepCopy(heuristicOrders));
         }
+    }
+
+
+    /**
+     * Returns deep copies of every distinct raw outcome discovered before final
+     * Referee meta-resolution selects a final result.
+     */
+    public Collection<Set<Order>> getCandidateResolutions() {
+
+        Collection<Set<Order>> copies = new ArrayList<>();
+
+        for (Set<Order> resolution : this.resolutions.values()) {
+            copies.add(new LinkedHashSet<>(Orders.deepCopy(resolution)));
+        }
+
+        return copies;
+    }
+
+
+    /**
+     * Creates a stable key for the externally meaningful result of a complete
+     * adjudication outcome.
+     *
+     * "resolved" is intentionally excluded: it is recursive-algorithm bookkeeping,
+     * not a Diplomacy result. Two outcomes that differ only in that flag must be
+     * treated as the same resolution.
+     *
+     * The key includes:
+     * - the final order identity;
+     * - success/failure (verdict); and
+     * - the original convoy identity, when a convoy was replaced by a Szykman hold.
+     */
+    private static String resolutionKey(Collection<Order> resolution) {
+
+        List<String> entries = new ArrayList<>();
+
+        for (Order order : resolution) {
+            entries.add(
+                    orderIdentityKey(order)
+                            + "\u001Fverdict=" + order.verdict
+                            + "\u001Fsnapshot=" + snapshotIdentityKey(order)
+            );
+        }
+
+        Collections.sort(entries);
+        return String.join("\n", entries);
+
+    }
+
+    /**
+     * Produces a stable representation of an order's identity fields.
+     */
+    private static String orderIdentityKey(Order order) {
+
+        return String.valueOf(order.owner)
+                + "\u001F" + String.valueOf(order.unitType)
+                + "\u001F" + String.valueOf(order.orderType)
+                + "\u001F" + String.valueOf(order.pos0)
+                + "\u001F" + String.valueOf(order.pos1)
+                + "\u001F" + String.valueOf(order.pos2)
+                + "\u001F" + order.dislodged;
+
+    }
+
+    /**
+     * Includes the original convoy order when this order was replaced by a
+     * Szykman hold. This prevents a normal HOLD from being conflated with a
+     * transformed convoy order.
+     */
+    private static String snapshotIdentityKey(Order order) {
+
+        Order snapshot = order.getSnapshot();
+
+        if (snapshot == null)
+            return "<none>";
+
+        return orderIdentityKey(snapshot);
+
+    }
+
+    /**
+     * Returns the originally submitted order.
+     *
+     * A Szykman replacement hold retains the original convoy order in its
+     * snapshot. Ordinary orders have no snapshot and are returned directly.
+     */
+    private static Order originalOrderOf(Order order) {
+
+        Order snapshot = order.getSnapshot();
+
+        if (snapshot != null)
+            return snapshot;
+
+        return order;
+
+    }
+
+    /**
+     * Returns whether two resolved orders originated from the same submitted order.
+     *
+     * This correctly treats a Szykman replacement HOLD and its original CONVOY
+     * as the same underlying order.
+     */
+    private static boolean sameOriginalOrder(Order first, Order second) {
+        return originalOrderOf(first).equals(originalOrderOf(second));
+    }
+
+    /**
+     * Returns whether two versions of an order have the same adjudication result.
+     *
+     * This must not use Order.hashCode(). hashCode() intentionally ignores mutable
+     * adjudication metadata so Orders remain safe as HashSet / HashMap keys.
+     */
+    private static boolean sameAdjudicationOutcome(Order first, Order second) {
+
+        return first.resolved == second.resolved
+                && first.verdict == second.verdict
+                && (first.getSnapshot() != null) == (second.getSnapshot() != null);
+
+    }
+
+    /**
+     * Finds the version of candidate's original order inside a candidate outcome.
+     */
+    private static Order findMatchingOriginalOrder(
+            Order candidate,
+            Collection<Order> resolution
+    ) {
+
+        for (Order order : resolution) {
+            if (sameOriginalOrder(candidate, order))
+                return order;
+        }
+
+        return null;
+
+    }
+
+    /**
+     * Returns all orders whose original submitted type was CONVOY.
+     *
+     * This includes ordinary convoy orders and Szykman-transformed HOLD orders.
+     */
+    private static Collection<Order> convoyOrdersIncludingSzykmanHolds(
+            Collection<Order> resolution
+    ) {
+
+        Collection<Order> convoyOrders = new ArrayList<>();
+
+        for (Order order : resolution) {
+            if (originalOrderOf(order).orderType == OrderType.CONVOY)
+                convoyOrders.add(order);
+        }
+
+        return convoyOrders;
 
     }
 
@@ -213,82 +415,92 @@ public class Referee extends Judge {
      */
     private Collection<Order> szykmanRule(Collection<Set<Order>> resolutions) {
 
-        Collection<Order> verdict           = new HashSet<>();
-        Collection<Order> ordersToReplace   = new HashSet<>();
+        if (resolutions.isEmpty())
+            return Collections.emptyList();
 
-        // Determine all Convoy orders with differing resolutions,
-        // ==> add them all to `ordersToReplace` (wysiwyg)
-        Collection<Order> convoyOrders;  // declare up here to save heap space
+        /*
+         * Maps every conflicting original convoy to one clean copy of its original
+         * submitted order. `LinkedHashMap` preserves discovery order for diagnostics.
+         */
+        Map<String, Order> conflictingConvoys = new LinkedHashMap<>();
+
+        /*
+         * A convoy is conflicting if its outcome differs across candidate
+         * resolutions. This comparison includes:
+         *
+         * - `resolved`;
+         * - `verdict`; and
+         * - whether it was replaced with a Szykman hold.
+         *
+         * It deliberately does NOT use `Order.hashCode()`.
+         */
         for (Set<Order> resolution : resolutions) {
+            for (Order convoyOrder : convoyOrdersIncludingSzykmanHolds(resolution)) {
 
-            convoyOrders = Orders.pruneForOrderType(OrderType.CONVOY, resolution);  // & assign down here
-            for (Order convoyOrder : convoyOrders) {
+                boolean differsAcrossResolutions = false;
 
-                boolean diffResolution = false;  // will be `true` if metadata is equal, `false` otherwise
+                for (Set<Order> otherResolution : resolutions) {
 
-                Collection<Order> convoyOrders2;
-                for (Set<Order> resolution2 : resolutions) {
-                    if (resolution == resolution2) continue;
-                    convoyOrders2 = Orders.pruneForOrderType(OrderType.CONVOY, resolution2);
-                    for (Order convoyOrder2 : convoyOrders2) {
-                        if (convoyOrder.equals(convoyOrder2)) {
-                            // `diffResolution` ==> `true` if metadata is equal, `false` otherwise
-                            diffResolution = (convoyOrder.hashCode() != convoyOrder2.hashCode());
-                            break;
-                        }
-                    }
-                }
+                    Order matchingOrder = findMatchingOriginalOrder(
+                            convoyOrder,
+                            otherResolution
+                    );
 
-                // differing resolution for `convoyOrder`: add (CLONE) to `ordersToReplace`
-                if (diffResolution) {
-                    ordersToReplace.add(new Order(convoyOrder));  // clone
-                    break;
-                }
-
-            }
-
-        }
-
-        // apply Szykman Rule -- replace problem-convoys in `ordersToReplace` with holds and add to `verdict`
-        for (Order order : ordersToReplace) {
-
-            // take snapshot (will transform into Szykman hold)
-            order.takeSnapshot();
-
-            order.pos1 = null;
-            order.pos2 = null;
-            order.orderType = OrderType.HOLD;
-
-            boolean found = false;
-            for (Order verdictOrder : verdict) {
-                if (order.pos0 == verdictOrder.pos0) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                verdict.add(order);
-
-        }
-
-        // all other orders (CLONES) are added to `verdict`,
-        // ... [arbitrarily] from the FIRST resolution =>  \\ (see comment below!) //  <=
-        for (Set<Order> resolution : resolutions) {  // this for "loop" will run only once
-            for (Order order : resolution) {
-                boolean found = false;
-                for (Order verdictOrder : verdict) {
-                    if (order.pos0 == verdictOrder.pos0) {
-                        found = true;
+                    if (matchingOrder == null
+                            || !sameAdjudicationOutcome(convoyOrder, matchingOrder)) {
+                        differsAcrossResolutions = true;
                         break;
                     }
                 }
-                if (!found)
-                    verdict.add(new Order(order));  // clone
+
+                if (differsAcrossResolutions) {
+                    Order originalConvoy = new Order(originalOrderOf(convoyOrder));
+
+                    conflictingConvoys.putIfAbsent(
+                            orderIdentityKey(originalConvoy),
+                            originalConvoy
+                    );
+                }
             }
-            break;  // this for "loop" will run only once
         }
 
-        return verdict;  // should be entirely made up of cloned Orders; no 'originals'
+        /*
+         * Begin with a representative resolution. The Szykman replacements below
+         * overwrite only orders identified as conflicting.
+         */
+        Set<Order> representativeResolution = resolutions.iterator().next();
+
+        Collection<Order> verdict = new LinkedHashSet<>();
+
+        for (Order order : representativeResolution) {
+
+            Order originalOrder = originalOrderOf(order);
+            String originalKey = orderIdentityKey(originalOrder);
+
+            if (conflictingConvoys.containsKey(originalKey)) {
+                continue;
+            }
+
+            verdict.add(new Order(order));
+        }
+
+        /*
+         * Replace each actually conflicting convoy by a HOLD, retaining the
+         * original convoy as its snapshot.
+         */
+        for (Order originalConvoy : conflictingConvoys.values()) {
+
+            Order szykmanHold = new Order(originalConvoy);
+
+            szykmanHold.takeSnapshot();
+            szykmanHold.orderType = OrderType.HOLD;
+            szykmanHold.pos1 = null;
+            szykmanHold.pos2 = null;
+
+            verdict.add(szykmanHold);
+        }
+
+        return verdict;
 
     }
 

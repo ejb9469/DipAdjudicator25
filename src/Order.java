@@ -59,12 +59,28 @@ public class Order implements Comparable<Order> {
     }
 
     public Order(Order order2) {
-        this(order2.owner, order2.unitType, order2.pos0, order2.orderType, order2.pos1, order2.pos2, order2.dislodged);
+        this(
+                order2.owner,
+                order2.unitType,
+                order2.pos0,
+                order2.orderType,
+                order2.pos1,
+                order2.pos2,
+                order2.dislodged
+        );
+
         this.resolved = order2.resolved;
         this.verdict = order2.verdict;
         this.visited = order2.visited;
         this.suppressH2HAdjudication = order2.suppressH2HAdjudication;
-        this.originalOrder = order2.originalOrder;
+
+        /*
+         * Snapshots should be copied rather than shared. takeSnapshot() ensures
+         * a snapshot does not itself have another snapshot, so this remains shallow.
+         */
+        this.originalOrder = (order2.originalOrder == null)
+                ? null
+                : new Order(order2.originalOrder);
     }
 
 
@@ -177,21 +193,25 @@ public class Order implements Comparable<Order> {
     @Override
     public boolean equals(Object other) {
 
+        if (this == other)
+            return true;
+
         if (!(other instanceof Order))
             return false;
 
-        Order order2;
-        try {
-            order2 = (Order) other;
-        } catch (ClassCastException ex) {
-            ex.printStackTrace();
-            return false;
-        }
+        Order order2 = (Order) other;
 
-        return (this.owner == order2.owner && this.unitType == order2.unitType && this.orderType == order2.orderType &&
-                this.pos0 == order2.pos0 && this.pos1 == order2.pos1 && this.pos2 == order2.pos2 &&
-                this.dislodged == order2.dislodged);
-
+        /*
+         * Resolver metadata is intentionally ignored. An Order's identity is its
+         * underlying submitted order, not its current adjudication result.
+         */
+        return this.owner == order2.owner
+                && this.unitType == order2.unitType
+                && this.orderType == order2.orderType
+                && this.pos0 == order2.pos0
+                && this.pos1 == order2.pos1
+                && this.pos2 == order2.pos2
+                && this.dislodged == order2.dislodged;
     }
 
     /**
@@ -199,17 +219,27 @@ public class Order implements Comparable<Order> {
      *
      * This method is supported for the benefit of hash tables such as those provided by `java.util.HashMap`.<br><br>
      *
-     * Note: this particular implementation actually violates the general contract for `hashcode()` (according to JDocs for `Object::hashcode()`)
-     *
-     * @return Hash code of this Order's principal fields, AND both `resolved` & `verdict`
+     * @return Hash code of this Order's principal fields, NOT (e.g.) `resolved` & `verdict`
      */
     @Override
     public int hashCode() {
-        return Objects.hash(this.owner, this.unitType, this.orderType,
-                            this.pos0, this.pos1, this.pos2,
-                            this.dislodged,
-                            this.resolved, this.verdict);
-        // Notable exceptions: `visited` and `suppressH2HAdjudication` are not computed into the hash
+
+        /*
+         * This must use exactly the fields used by equals().
+         *
+         * Do not include resolved, verdict, visited, snapshots, or other mutable
+         * adjudication state. Including mutable fields makes an Order unsafe in
+         * HashSet and HashMap collections.
+         */
+        return Objects.hash(
+                this.owner,
+                this.unitType,
+                this.orderType,
+                this.pos0,
+                this.pos1,
+                this.pos2,
+                this.dislodged
+        );
     }
 
     /**
