@@ -1,6 +1,8 @@
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -84,17 +86,40 @@ public class SzykmanReferee extends Referee {
     // Final meta-resolution selection \\
 
     /**
-     * Applies the Szykman-specific post-selection policy after Referee has
-     * collected raw candidates and chosen its normal final resolution.
+     * Applies the Szykman-specific convoy-paradox policy after Referee has
+     * collected raw candidates.<br><br>
+     *
+     * A single conflicting convoy retains the narrow F17 compatibility rule.
+     * Two or more conflicting convoys are replaced by HOLD orders together,
+     * then the complete transformed position is adjudicated afresh.
      */
     @Override
     protected Collection<Order> selectFinalResolution() {
+
+        /*
+         * Referee.judge() restores this.orders to the submitted order set before
+         * calling this hook. Preserve that state before the inherited selector
+         * potentially performs its legacy tie-handling re-adjudication.
+         */
+        Collection<Order> submittedOrders = new ArrayList<>(
+                Orders.deepCopy(this.orders)
+        );
 
         Collection<Order> baseResolution =
                 super.selectFinalResolution();
 
         if (baseResolution == null)
             return null;
+
+        Map<String, Order> conflictingConvoys =
+                this.findConflictingConvoys(this.resolutions.values());
+
+        if (conflictingConvoys.size() >= 2) {
+            return this.adjudicateWithConflictingConvoysHeld(
+                    submittedOrders,
+                    conflictingConvoys
+            );
+        }
 
         Set<Order> selectedResolution = new LinkedHashSet<>(
                 Orders.deepCopy(baseResolution)
@@ -106,6 +131,48 @@ public class SzykmanReferee extends Referee {
 
 
     // Szykman convoy-paradox helpers \\
+
+    /**
+     * Applies the Szykman rule to a multi-convoy paradox.<br><br>
+     *
+     * Each submitted convoy whose outcome differs across raw candidates is
+     * converted to a snapshot-backed HOLD before all orders are adjudicated
+     * together. The conversion is simultaneous, so no conflicting raw
+     * permutation is allowed to choose which convoy survives.
+     */
+    private Collection<Order> adjudicateWithConflictingConvoysHeld(
+            Collection<Order> submittedOrders,
+            Map<String, Order> conflictingConvoys
+    ) {
+
+        List<Order> transformedOrders = new ArrayList<>(
+                Orders.deepCopy(submittedOrders)
+        );
+
+        for (Order order : transformedOrders) {
+
+            if (order.orderType != OrderType.CONVOY)
+                continue;
+
+            String orderKey = orderIdentityKey(originalOrderOf(order));
+
+            if (!conflictingConvoys.containsKey(orderKey))
+                continue;
+
+            order.takeSnapshot();
+            order.orderType = OrderType.HOLD;
+            order.pos1 = null;
+            order.pos2 = null;
+        }
+
+        Judge judge = new Judge(transformedOrders);
+        judge.judge();
+
+        return new LinkedHashSet<>(
+                Orders.deepCopy(judge.getOrders())
+        );
+
+    }
 
     /**
      * Applies the narrow one-conflicting-convoy resolution policy.<br><br>
