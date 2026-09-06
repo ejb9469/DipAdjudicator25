@@ -21,9 +21,9 @@ public class TestCaseReferee extends TestCase {
 
         Judge judge;
         if (!orders.isEmpty())
-            judge = new Referee(new ArrayList<>(orders));
+            judge = new SzykmanReferee(new ArrayList<>(orders));
         else
-            judge = new Referee();
+            judge = new SzykmanReferee();
 
         judge.judge();
         judge.orders = Orders.conformOrder(judge.orders, this.orders);

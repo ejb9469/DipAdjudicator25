@@ -8,6 +8,16 @@ public class TestCaseManager {
     public static final short MODE = 0;
 
     /*
+     * Select the DATC/Szykman-oriented referee policy for diagnostics and any
+     * Referee instances constructed directly by this class.
+     *
+     * MODE 0 is evaluated by TestCaseReferee, which constructs its own Judge /
+     * Referee instance. Update TestCaseReferee separately to make normal
+     * one-off test evaluation use this policy too.
+     */
+    public static final boolean USE_SZYKMAN_REFEREE = true;
+
+    /*
      * Limit printed provenance samples per candidate. The complete candidate
      * frequency remains available through occurrences and seed counts.
      */
@@ -262,7 +272,7 @@ public class TestCaseManager {
                 Referee ref;
 
                 for (TestCase paradox : refereeSimulParadoxes.keySet()) {
-                    ref = new Referee(paradox.getOrders());
+                    ref = createReferee(paradox.getOrders());
                     ref.judge();
 
                     System.out.println(paradox.getName());
@@ -319,6 +329,53 @@ public class TestCaseManager {
 
 
     /**
+     * Creates the referee profile selected for diagnostics and direct
+     * TestCaseManager referee use.
+     */
+    private static Referee createReferee(Collection<Order> orders) {
+
+        if (USE_SZYKMAN_REFEREE) {
+            return new SzykmanReferee(
+                    orders,
+                    Referee.NUM_TRIALS_DEFAULT,
+                    Referee.SHUFFLE_SEED_DEFAULT
+            );
+        }
+
+        return new Referee(
+                orders,
+                Referee.NUM_TRIALS_DEFAULT,
+                Referee.SHUFFLE_SEED_DEFAULT
+        );
+    }
+
+    /**
+     * Creates the referee profile selected for diagnostics and direct
+     * TestCaseManager referee use with a known random seed.
+     */
+    private static Referee createReferee(
+            Collection<Order> orders,
+            int numTrials,
+            long shuffleSeed
+    ) {
+
+        if (USE_SZYKMAN_REFEREE) {
+            return new SzykmanReferee(
+                    orders,
+                    numTrials,
+                    shuffleSeed
+            );
+        }
+
+        return new Referee(
+                orders,
+                numTrials,
+                shuffleSeed
+        );
+    }
+
+
+    /**
      * Runs a test case repeatedly with known seeds and reports:
      *
      * - distinct final Referee outcomes;
@@ -339,7 +396,7 @@ public class TestCaseManager {
 
         for (long seed = 0; seed < numSeeds; seed++) {
 
-            Referee referee = new Referee(
+            Referee referee = createReferee(
                     new ArrayList<>(Orders.deepCopy(testCase.getOrders())),
                     numTrials,
                     seed
@@ -467,7 +524,7 @@ public class TestCaseManager {
 
         for (long seed = 0; seed < numSeeds; seed++) {
 
-            Referee referee = new Referee(
+            Referee referee = createReferee(
                     new ArrayList<>(Orders.deepCopy(testCase.getOrders())),
                     numTrials,
                     seed
@@ -855,11 +912,13 @@ public class TestCaseManager {
         ) {
             this.occurrences += occurrencesForSeed;
             this.seeds.add(seed);
+
             for (int trial : trialNumbers) {
                 if (this.provenanceSamples.size()
                         >= MAX_PROVENANCE_SAMPLES) {
                     return;
                 }
+
                 this.provenanceSamples.add(
                         "seed=" + seed + ", trial=" + trial
                 );
