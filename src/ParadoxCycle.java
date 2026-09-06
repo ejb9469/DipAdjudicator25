@@ -4,9 +4,9 @@ import java.util.List;
 
 /**
  * Immutable record of one recursive dependency cycle detected while
- * adjudicating a collection of orders.
+ * adjudicating a collection of orders.<br><br>
  *
- * The list retains the actual Order references for diagnostics. The stable key
+ * The list retains the actual Order references for diagnostic purposes. The stable key
  * and convoy flag are captured at construction time because Judge may later
  * mutate a paradoxical convoy into a Szykman HOLD.
  */

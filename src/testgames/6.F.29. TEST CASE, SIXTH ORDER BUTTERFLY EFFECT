@@ -1,0 +1,34 @@
+Russia:
+F Finland - Gulf of Bothnia
+F St Petersburg(sc) Supports F Finland - Gulf of Bothnia
+F Prussia - Baltic Sea
+F Sweden Supports F Prussia - Baltic Sea
+F Skagerrak - North Sea
+F Denmark Supports F Skagerrak - North Sea
+F Norway - Norwegian Sea
+F Clyde Supports F Norway - Norwegian Sea
+
+Germany:
+A Livonia - Sweden
+F Gulf of Bothnia Convoys A Livonia - Sweden
+A Berlin - Denmark
+F Baltic Sea Convoys A Berlin - Denmark
+A Holland - London
+F North Sea Convoys A Holland - London
+A Belgium - Brest
+F English Channel Convoys A Belgium - Brest
+
+England:
+F Wales - English Channel
+F London Supports F Wales - English Channel
+A North Africa - Clyde
+F Mid-Atlantic Ocean Convoys A North Africa - Clyde
+F North Atlantic Ocean Convoys A North Africa - Clyde
+A Edinburgh - St Petersburg
+F Norwegian Sea Convoys A Edinburgh - St Petersburg
+F Barents Sea Convoys A Edinburgh - St Petersburg
+F Portugal Supports F Mid-Atlantic Ocean
+
+France:
+F Spain(nc) - Mid-Atlantic Ocean
+F Brest Supports F Spain(nc) - Mid-Atlantic Ocean

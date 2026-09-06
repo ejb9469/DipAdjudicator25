@@ -59,8 +59,8 @@ public class Judge {
      * so a later change can safely create branch-local contexts.
      */
     private ResolutionContext rootContext = ResolutionContext.empty();
-
-
+    
+    
     // Constructors \\
 
     public Judge() {
@@ -104,6 +104,9 @@ public class Judge {
      */
     public void judge() {
 
+        if (this.judgeComponents())
+            return;
+
         // reset meta resolve values
         this.cycle = new ArrayList<>();
         this.recursionHits = 0;
@@ -146,6 +149,60 @@ public class Judge {
         // 3rd run :: SOFT RESOLVE
         for (Order order : orders)
             resolve(order, true, this.rootContext);
+    }
+
+
+    // Component handling \\
+
+    /**
+     * Resolves independent dependency components (based on `ParadoxCycle`s)
+     * through separate Judge instances.
+     * Each component preserves the legacy shared recursive state internally,
+     * while unrelated paradoxes cannot corrupt one another's cycle bookkeeping.<br><br>
+     *
+     * The component lists contain the original Order instances,
+     * so each child Judge mutates the same orders retained by this Judge.
+     *
+     * @return True when this Judge delegated to multiple component Judges
+     */
+    private boolean judgeComponents() {
+
+        List<List<Order>> components =
+                OrderDependencyComponents.partition(this.orders);
+
+        // Single Component
+        if (components.size() <= 1)
+            return false;
+
+        this.detectedParadoxCycles.clear();
+        this.resolutionStack.clear();
+
+        // Multiple components
+        for (List<Order> component : components) {
+
+            Judge componentJudge = new Judge(component);
+            componentJudge.judge();
+
+            for (ParadoxCycle detectedCycle :
+                    componentJudge.getDetectedParadoxCycles()) {
+
+                boolean alreadyKnown = false;
+                for (ParadoxCycle existingCycle :
+                        this.detectedParadoxCycles) {
+                    if (existingCycle.key().equals(detectedCycle.key())) {
+                        alreadyKnown = true;
+                        break;
+                    }
+                }
+                if (!alreadyKnown)
+                    this.detectedParadoxCycles.add(detectedCycle);
+
+            }
+
+        }
+
+        return true;
+
     }
 
 
