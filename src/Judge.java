@@ -12,37 +12,23 @@ import java.util.*;
 public class Judge {
 
 
+    // Constants \\
+
     public static final boolean DEBUG_PRINT = true;
 
 
     // The adjudication program needs to handle the following situations:
-    // a. An order that is not indirectly dependent on itself
-    // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
-    // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
+        // a. An order that is not indirectly dependent on itself
+        // b. An order that is indirectly dependent on itself, but there is still exactly 1 resolution
+        // c. An order that is indirectly dependent on itself, but there are 0 or 2 possible resolutions
 
+
+    // Core state \\
 
     protected Collection<Order> orders;
 
 
-    public Judge() {
-        this.orders = new ArrayList<>();
-    }
-
-    public Judge(Collection<Order> orders) {
-        this.orders = orders;
-    }
-
-
-    public Collection<Order> getOrders() {
-        return orders;
-    }
-
-    public Collection<ParadoxCycle> getDetectedParadoxCycles() {
-        return Collections.unmodifiableList(
-                new ArrayList<>(this.detectedParadoxCycles)
-        );
-    }
-
+    // Resolver state and cycle diagnostics \\
 
     /*
      * Global vars for the `resolve()` func:</u><br>
@@ -74,6 +60,32 @@ public class Judge {
      */
     private ResolutionContext rootContext = ResolutionContext.empty();
 
+
+    // Constructors \\
+
+    public Judge() {
+        this.orders = new ArrayList<>();
+    }
+
+    public Judge(Collection<Order> orders) {
+        this.orders = orders;
+    }
+
+
+    // Public accessors \\
+
+    public Collection<Order> getOrders() {
+        return orders;
+    }
+
+    public Collection<ParadoxCycle> getDetectedParadoxCycles() {
+        return Collections.unmodifiableList(
+                new ArrayList<>(this.detectedParadoxCycles)
+        );
+    }
+
+
+    // `judge()` method \\
 
     /**
      * Definitively resolves the Collection of Orders `orders`.<br><br>
@@ -137,8 +149,10 @@ public class Judge {
     }
 
 
+    // `adjudicate(...)` method(s) \\
+
     /**
-     * Compatibility wrapper.
+     * Compatibility wrapper.<br><br>
      *
      * This overload exists while ResolutionContext is being introduced.
      */
@@ -529,8 +543,10 @@ public class Judge {
     }
 
 
+    // `resolve(...)` method(s) \\
+
     /**
-     * Compatibility wrapper.
+     * Compatibility wrapper.<br><br>
      *
      * Internal Judge code should use the overload that accepts
      * ResolutionContext.
@@ -540,7 +556,7 @@ public class Judge {
     }
 
     /**
-     * Transitional boolean API.
+     * Transitional boolean API.<br><br>
      *
      * Existing adjudication logic still needs only a success/failure value. The
      * ResolutionResult overload preserves whether that value was committed or
@@ -681,6 +697,45 @@ public class Judge {
     }
 
     /**
+     * Captures the active call-stack segment that starts with `revisitedOrder`.<br><br>
+     *
+     * Identity comparison is required: Order.equals() may compare submitted-order
+     * fields and is not a safe test for locating a specific object on the active
+     * recursive stack.
+     */
+    private void recordDetectedParadoxCycle(Order revisitedOrder) {
+
+        int cycleStart = -1;
+
+        for (int i = 0; i < this.resolutionStack.size(); i++) {
+            if (this.resolutionStack.get(i) == revisitedOrder) {
+                cycleStart = i;
+                break;
+            }
+        }
+
+        if (cycleStart < 0)
+            return;
+
+        ParadoxCycle detectedCycle = new ParadoxCycle(
+                this.resolutionStack.subList(
+                        cycleStart,
+                        this.resolutionStack.size()
+                )
+        );
+
+        for (ParadoxCycle existingCycle : this.detectedParadoxCycles) {
+            if (existingCycle.key().equals(detectedCycle.key()))
+                return;
+        }
+
+        this.detectedParadoxCycles.add(detectedCycle);
+    }
+
+
+    // Cycle backup and Szykman handling \\
+
+    /**
      * Subroutine of `resolve(...)`, handles cyclical Order dependencies.<br><br>
      *
      * These dependencies may EITHER be comprised of all Move Orders, in which case, all Orders are forced through as `resolved = true` and `verdict = true`,<br>
@@ -741,6 +796,8 @@ public class Judge {
         }
     }
 
+
+    // Movement and convoy-path helpers \\
 
     /**
      * Compatibility overload for subclasses and callers that do not yet pass
@@ -921,6 +978,8 @@ public class Judge {
         }
     }
 
+
+    // Support and strength helpers \\
 
     protected int tallySuccessfulSupports(
             Order order,
@@ -1228,7 +1287,6 @@ public class Judge {
     }
 
 
-    @SuppressWarnings("PointlessBooleanExpression")
     protected int calculatePreventStrength(
             Order moveOrder,
             boolean optimistic,
@@ -1245,7 +1303,6 @@ public class Judge {
     /**
      * Calculate a Move Order's Prevent Strength.
      */
-    @SuppressWarnings("PointlessBooleanExpression")
     protected int calculatePreventStrength(
             Order moveOrder,
             boolean optimistic,
@@ -1326,48 +1383,16 @@ public class Judge {
         );
     }
 
-    /**
-     * Captures the active call-stack segment that starts with `revisitedOrder`.
-     *
-     * Identity comparison is required: Order.equals() may compare submitted-order
-     * fields and is not a safe test for locating a specific object on the active
-     * recursive stack.
-     */
-    private void recordDetectedParadoxCycle(Order revisitedOrder) {
 
-        int cycleStart = -1;
-
-        for (int i = 0; i < this.resolutionStack.size(); i++) {
-            if (this.resolutionStack.get(i) == revisitedOrder) {
-                cycleStart = i;
-                break;
-            }
-        }
-
-        if (cycleStart < 0)
-            return;
-
-        ParadoxCycle detectedCycle = new ParadoxCycle(
-                this.resolutionStack.subList(
-                        cycleStart,
-                        this.resolutionStack.size()
-                )
-        );
-
-        for (ParadoxCycle existingCycle : this.detectedParadoxCycles) {
-            if (existingCycle.key().equals(detectedCycle.key()))
-                return;
-        }
-
-        this.detectedParadoxCycles.add(detectedCycle);
-    }
+    // ResolutionContext helper \\
 
     /**
-     * Transitional suppression lookup.
+     * Transitional suppression lookup.<br><br>
      *
      * The legacy field is deliberately retained during the context migration,
      * so this plumbing change preserves existing adjudication behavior.
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean isHeadToHeadSuppressed(
             Order order,
             ResolutionContext context
@@ -1375,5 +1400,6 @@ public class Judge {
         return order.suppressH2HAdjudication
                 || context.suppressesHeadToHead(order);
     }
+
 
 }

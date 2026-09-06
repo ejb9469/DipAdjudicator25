@@ -119,19 +119,29 @@ public class TestCaseManager {
          * diagnoseRefereeStability(...) for future regressions.
          */
         for (TestCase testCase : manager.testCases) {
+
             String name = testCase.getName();
 
-            if (//name.contains("6.E.11")
-                    /*||*/ name.contains("6.F.17.P")
-                    //|| name.contains("6.F.23.P")
-                    //|| name.contains("6.F.24.P")) {
-            ) {
+            if (name.contains("6.E.11")
+                    || name.contains("6.F.17.P")
+                    || name.contains("6.F.23.P")
+                    || name.contains("6.F.24.P")) {
                 diagnoseRefereeStability(
                         testCase,
                         50,
                         Referee.NUM_TRIALS_DEFAULT
                 );
             }
+
+            if (name.contains("6.F.23.P")
+                    || name.contains("6.F.24.P")) {
+                diagnoseSecondOrderParadox(
+                        testCase,
+                        50,
+                        Referee.NUM_TRIALS_DEFAULT
+                );
+            }
+
         }
 
         System.out.println("\n----------------------------------------\n");
@@ -432,6 +442,369 @@ public class TestCaseManager {
         }
     }
 
+    /**
+     * Produces a compact, convoy-centered report for the DATC second-order
+     * paradoxes.<br><br>
+     *
+     * Unlike diagnoseRefereeStability(...), this report does not print every raw
+     * order as an unstructured list. It groups each candidate by:<br><br>
+     *
+     * - submitted convoy;
+     * - corresponding convoyed army move;
+     * - direct attacks on the convoying fleet; and
+     * - captured recursive cycles containing that convoy.<br><br>
+     *
+     * This is diagnostic-only. It does not alter Referee selection logic.
+     */
+    public static void diagnoseSecondOrderParadox(
+            TestCase testCase,
+            int numSeeds,
+            int numTrials
+    ) {
+
+        Map<String, SecondOrderCandidateStats> candidates =
+                new TreeMap<>();
+
+        for (long seed = 0; seed < numSeeds; seed++) {
+
+            Referee referee = new Referee(
+                    new ArrayList<>(Orders.deepCopy(testCase.getOrders())),
+                    numTrials,
+                    seed
+            );
+
+            referee.judge();
+
+            for (Referee.CandidateObservation observation :
+                    referee.getCandidateObservations()) {
+
+                Set<Order> resolution =
+                        observation.getRepresentativeResolution();
+
+                String key = outcomeKey(resolution);
+
+                SecondOrderCandidateStats stats =
+                        candidates.computeIfAbsent(
+                                key,
+                                ignored -> new SecondOrderCandidateStats(
+                                        resolution,
+                                        observation.getExampleInputOrder()
+                                )
+                        );
+
+                stats.record(
+                        seed,
+                        observation.getOccurrences(),
+                        observation.getTrialNumbers(),
+                        observation.getDetectedCycles()
+                );
+            }
+        }
+
+        System.out.printf(
+                "%n============================================================%n"
+                        + "[SECOND-ORDER PARADOX REPORT]%n"
+                        + "%s%n"
+                        + "Seeds: %d | Trials per seed: %d%n"
+                        + "Distinct raw verdict-level candidates: %d%n"
+                        + "============================================================%n",
+                testCase.getName(),
+                numSeeds,
+                numTrials,
+                candidates.size()
+        );
+
+        int candidateNumber = 1;
+
+        for (SecondOrderCandidateStats stats : candidates.values()) {
+
+            System.out.printf(
+                    "%n---------------- CANDIDATE %d ----------------%n",
+                    candidateNumber++
+            );
+
+            System.out.printf(
+                    "Observed: %d time(s) across %d seed(s)%n",
+                    stats.occurrences,
+                    stats.seeds.size()
+            );
+
+            System.out.printf(
+                    "Seeds: %s%n",
+                    stats.seeds
+            );
+
+            if (!stats.provenanceSamples.isEmpty()) {
+                System.out.printf(
+                        "Trial samples: %s%n",
+                        stats.provenanceSamples
+                );
+            }
+
+            System.out.println("\nRepresentative input ordering:");
+
+            for (int i = 0; i < stats.exampleInputOrder.size(); i++) {
+                System.out.printf(
+                        "  [%d] %s%n",
+                        i,
+                        stats.exampleInputOrder.get(i)
+                );
+            }
+
+            System.out.println("\nConvoy dependency summary:");
+
+            List<Order> convoys = new ArrayList<>();
+
+            for (Order order : stats.representativeResolution) {
+                if (originalOrderOf(order).orderType == OrderType.CONVOY)
+                    convoys.add(order);
+            }
+
+            convoys.sort(new OrderComparator());
+
+            if (convoys.isEmpty()) {
+                System.out.println("  No convoys in this candidate.");
+            }
+
+            for (Order convoyVersion : convoys) {
+                printConvoyDependencySummary(
+                        convoyVersion,
+                        stats.representativeResolution
+                );
+            }
+
+            System.out.println("\nCaptured convoy-containing cycles:");
+
+            List<ParadoxCycle> convoyCycles = new ArrayList<>();
+
+            for (ParadoxCycle cycle : stats.detectedCycles.values()) {
+                if (cycle.containsConvoy())
+                    convoyCycles.add(cycle);
+            }
+
+            if (convoyCycles.isEmpty()) {
+                System.out.println("  None.");
+            } else {
+                int cycleNumber = 1;
+
+                for (ParadoxCycle cycle : convoyCycles) {
+                    System.out.printf(
+                            "%n  -- Cycle %d --%n",
+                            cycleNumber++
+                    );
+
+                    for (Order order : cycle.getMembers()) {
+                        System.out.printf(
+                                "  %s%n",
+                                order
+                        );
+                    }
+                }
+            }
+
+            System.out.println("\nFull candidate outcome:");
+
+            List<Order> sortedOrders = new ArrayList<>(
+                    stats.representativeResolution
+            );
+
+            sortedOrders.sort(new OrderComparator());
+
+            for (Order order : sortedOrders) {
+                System.out.printf(
+                        "  %-35s resolved=%-5b verdict=%-5b snapshot=%-5b%n",
+                        order,
+                        order.resolved,
+                        order.verdict,
+                        order.getSnapshot() != null
+                );
+            }
+        }
+
+        System.out.printf(
+                "%n============================================================%n"
+        );
+    }
+
+
+    /**
+     * Prints the convoy, its corresponding army movement order, and every direct
+     * attack against the convoying fleet's current province.
+     *
+     * A snapshot-backed HOLD is reported using its original convoy order, while
+     * still showing whether this candidate transformed it under Szykman.
+     */
+    private static void printConvoyDependencySummary(
+            Order convoyVersion,
+            Collection<Order> resolution
+    ) {
+
+        Order submittedConvoy = originalOrderOf(convoyVersion);
+
+        Order correspondingMove = null;
+
+        for (Order order : resolution) {
+            if (order.orderType != OrderType.MOVE)
+                continue;
+
+            if (order.pos0 == submittedConvoy.pos1
+                    && order.pos1 == submittedConvoy.pos2) {
+                correspondingMove = order;
+                break;
+            }
+        }
+
+        System.out.printf(
+                "%n  Convoy fleet: %s%n",
+                submittedConvoy
+        );
+
+        System.out.printf(
+                "    candidate representation: %s%n",
+                convoyVersion
+        );
+
+        System.out.printf(
+                "    convoy status: resolved=%b, verdict=%b, transformedToHold=%b%n",
+                convoyVersion.resolved,
+                convoyVersion.verdict,
+                convoyVersion.getSnapshot() != null
+        );
+
+        if (correspondingMove == null) {
+            System.out.println(
+                    "    corresponding army move: <not found>"
+            );
+        } else {
+            System.out.printf(
+                    "    corresponding army move: %s"
+                            + " | resolved=%b, verdict=%b%n",
+                    correspondingMove,
+                    correspondingMove.resolved,
+                    correspondingMove.verdict
+            );
+        }
+
+        List<Order> directFleetAttacks = new ArrayList<>();
+
+        for (Order order : resolution) {
+            if (order.orderType != OrderType.MOVE)
+                continue;
+
+            if (Province.equalsIgnoreCoast(
+                    order.pos1,
+                    submittedConvoy.pos0
+            )) {
+                directFleetAttacks.add(order);
+            }
+        }
+
+        directFleetAttacks.sort(new OrderComparator());
+
+        if (directFleetAttacks.isEmpty()) {
+            System.out.println(
+                    "    direct attacks on convoy fleet: <none>"
+            );
+            return;
+        }
+
+        System.out.println("    direct attacks on convoy fleet:");
+
+        for (Order attack : directFleetAttacks) {
+            System.out.printf(
+                    "      %s | resolved=%b, verdict=%b%n",
+                    attack,
+                    attack.resolved,
+                    attack.verdict
+            );
+        }
+    }
+
+
+    /**
+     * Returns an order's original submitted identity.<br><br>
+     *
+     * A Szykman replacement HOLD preserves the original CONVOY as a snapshot.
+     */
+    private static Order originalOrderOf(Order order) {
+
+        Order snapshot = order.getSnapshot();
+
+        return snapshot == null
+                ? order
+                : snapshot;
+    }
+
+
+    /**
+     * Aggregate diagnostic data for one raw verdict-level candidate across all
+     * tested Referee seeds.
+     */
+    private static final class SecondOrderCandidateStats {
+
+        private int occurrences;
+
+        private final Set<Long> seeds;
+        private final List<String> provenanceSamples;
+
+        private final Set<Order> representativeResolution;
+        private final List<Order> exampleInputOrder;
+
+        /*
+         * Keyed by ParadoxCycle.key(), because the same cycle can occur in many
+         * trials of the same candidate.
+         */
+        private final Map<String, ParadoxCycle> detectedCycles;
+
+
+        private SecondOrderCandidateStats(
+                Collection<Order> representativeResolution,
+                Collection<Order> exampleInputOrder
+        ) {
+            this.occurrences = 0;
+            this.seeds = new TreeSet<>();
+            this.provenanceSamples = new ArrayList<>();
+
+            this.representativeResolution = new LinkedHashSet<>(
+                    Orders.deepCopy(representativeResolution)
+            );
+
+            this.exampleInputOrder = new ArrayList<>(
+                    Orders.deepCopy(exampleInputOrder)
+            );
+
+            this.detectedCycles = new TreeMap<>();
+        }
+
+        private void record(
+                long seed,
+                int occurrencesForSeed,
+                Collection<Integer> trialNumbers,
+                Collection<ParadoxCycle> cycles
+        ) {
+            this.occurrences += occurrencesForSeed;
+            this.seeds.add(seed);
+
+            for (int trial : trialNumbers) {
+                if (this.provenanceSamples.size()
+                        >= MAX_PROVENANCE_SAMPLES) {
+                    break;
+                }
+
+                this.provenanceSamples.add(
+                        "seed=" + seed + ", trial=" + trial
+                );
+            }
+
+            for (ParadoxCycle cycle : cycles) {
+                this.detectedCycles.putIfAbsent(
+                        cycle.key(),
+                        cycle
+                );
+            }
+        }
+    }
+
 
     private static String finalOutcomeKey(Collection<Order> orders) {
         return outcomeKey(orders);
@@ -522,5 +895,6 @@ public class TestCaseManager {
         }
 
     }
+
 
 }

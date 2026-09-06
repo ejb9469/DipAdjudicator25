@@ -16,6 +16,8 @@ import java.util.*;
 public class Referee extends Judge {
 
 
+    // Constants \\
+
     public static final int NUM_TRIALS_DEFAULT = 300;
 
     /*
@@ -23,6 +25,9 @@ public class Referee extends Judge {
      * through the three-argument constructor when investigating instability.
      */
     public static final long SHUFFLE_SEED_DEFAULT = 0xD1A10C4CL;
+
+
+    // Config and state \\
 
     private final int numTrials;
     private final long shuffleSeed;
@@ -39,6 +44,8 @@ public class Referee extends Judge {
      */
     private final Map<String, CandidateObservation> candidateObservations;
 
+
+    // Constructors \\
 
     public Referee() {
         this(Collections.emptyList(), NUM_TRIALS_DEFAULT, SHUFFLE_SEED_DEFAULT);
@@ -80,6 +87,8 @@ public class Referee extends Judge {
         this.shuffleSeed = shuffleSeed;
     }
 
+
+    // `judge()` method \\
 
     /**
      * Definitively meta-resolves the Collection of Orders `orders`, and applies
@@ -318,6 +327,8 @@ public class Referee extends Judge {
     }
 
 
+    // Public diagnostics \\
+
     /**
      * Returns deep copies of every distinct raw outcome discovered before final
      * Referee meta-resolution selects a final result.
@@ -355,6 +366,376 @@ public class Referee extends Judge {
 
     }
 
+
+    // Default Szykman rule \\
+
+    /**
+     * Handles paradoxical situations involving conflicting convoy outcomes by
+     * replacing each conflicting convoy with a snapshot-backed HOLD.
+     * (This is a 'programmatic hold')<br><br>
+     *
+     * Returns a new collection and does not mutate the candidate resolutions.<br><br>
+     *
+     * This existing helper is used only in the historical tie-handling branch.
+     * The F17 single-convoy rule above deliberately does not call this method,
+     * because a transformed HOLD is not itself the final disrupted-convoy
+     * result.
+     */
+    private Collection<Order> szykmanRule(Collection<Set<Order>> resolutions) {
+
+        if (resolutions.isEmpty())
+            return Collections.emptyList();
+
+        Map<String, Order> conflictingConvoys =
+                this.findConflictingConvoys(resolutions);
+
+        /*
+         * Begin with a representative resolution. The replacements below
+         * overwrite only orders identified as conflicting convoys.
+         */
+        Set<Order> representativeResolution =
+                resolutions.iterator().next();
+
+        Collection<Order> verdict = new LinkedHashSet<>();
+
+        for (Order order : representativeResolution) {
+
+            Order originalOrder = originalOrderOf(order);
+            String originalKey = orderIdentityKey(originalOrder);
+
+            if (conflictingConvoys.containsKey(originalKey))
+                continue;
+
+            verdict.add(new Order(order));
+        }
+
+        /*
+         * Replace each genuinely conflicting convoy by a HOLD while preserving
+         * the original convoy in the replacement order's snapshot.
+         */
+        for (Order originalConvoy : conflictingConvoys.values()) {
+
+            Order szykmanHold = new Order(originalConvoy);
+
+            szykmanHold.takeSnapshot();
+            szykmanHold.orderType = OrderType.HOLD;
+            szykmanHold.pos1 = null;
+            szykmanHold.pos2 = null;
+
+            verdict.add(szykmanHold);
+        }
+
+        return verdict;
+
+    }
+
+
+    // Final meta-resolution helpers \\
+
+    /**
+     * Deterministically selects the most successful candidate from candidates
+     * already tied on the number of resolved orders.<br><br>
+     *
+     * A lexicographically ordered resolution key is used only as a final stable
+     * tie-breaker. This prevents HashSet iteration order from deciding a final
+     * Referee outcome.
+     */
+    private Set<Order> selectMostSuccessfulCandidate(
+            Collection<Set<Order>> candidates
+    ) {
+
+        Set<Order> selected = null;
+        int highestSuccessfulCount = -1;
+        String selectedKey = null;
+
+        for (Set<Order> candidate : candidates) {
+
+            int successfulCount = 0;
+
+            for (Order order : candidate) {
+                if (order.verdict)
+                    successfulCount++;
+            }
+
+            String candidateKey = resolutionKey(candidate);
+
+            if (selected == null
+                    || successfulCount > highestSuccessfulCount
+                    || (successfulCount == highestSuccessfulCount
+                    && candidateKey.compareTo(selectedKey) < 0)) {
+
+                selected = candidate;
+                highestSuccessfulCount = successfulCount;
+                selectedKey = candidateKey;
+            }
+        }
+
+        return selected;
+
+    }
+
+    /**
+     * Applies the narrow one-conflicting-convoy resolution policy.<br><br>
+     *
+     * The policy is intentionally conservative:<br><br>
+     *
+     * 1. There must be exactly one conflicting convoy.
+     * 2. The selected candidate must already resolve that convoy as failed.
+     * 3. The associated convoyed army must already fail in the selected result.
+     * 4. A successful move directly attacking the convoy fleet must have an
+     *    unstable `resolved` state across raw candidates.<br><br>
+     *
+     * A matching move satisfying all conditions is forced to fail. This retains
+     * the selected candidate's result for every unrelated order.
+     */
+    private Set<Order> applySingleConvoyParadoxRule(Set<Order> selectedResolution) {
+
+        Map<String, Order> conflictingConvoys =
+                this.findConflictingConvoys(this.resolutions.values());
+
+        if (conflictingConvoys.size() != 1)
+            return selectedResolution;
+
+        Order conflictingConvoy =
+                conflictingConvoys.values().iterator().next();
+
+        Order selectedConvoy = findMatchingOriginalOrder(
+                conflictingConvoy,
+                selectedResolution
+        );
+
+        if (selectedConvoy == null
+                || selectedConvoy.verdict) {
+            return selectedResolution;
+        }
+
+        Order correspondingMove = Orders.locateCorresponding(
+                conflictingConvoy,
+                selectedResolution
+        );
+
+        if (correspondingMove == null
+                || correspondingMove.verdict) {
+            return selectedResolution;
+        }
+
+        Set<Order> adjustedResolution = new LinkedHashSet<>(
+                Orders.deepCopy(selectedResolution)
+        );
+
+        for (Order order : adjustedResolution) {
+
+            if (order.orderType != OrderType.MOVE)
+                continue;
+
+            /*
+             * Only direct attacks on the paradoxical convoy fleet are in scope.
+             */
+            if (!Province.equalsIgnoreCoast(
+                    order.pos1,
+                    conflictingConvoy.pos0
+            )) {
+                continue;
+            }
+
+            /*
+             * The convoyed army is not attacking the convoy fleet's province
+             * in the F17 shape, but exclude it explicitly for safety.
+             */
+            if (sameOriginalOrder(order, correspondingMove))
+                continue;
+
+            /*
+             * A normal direct attack remains untouched. Only one whose
+             * resolution bookkeeping differs across raw candidates belongs to
+             * the contradictory convoy dependency.
+             */
+            if (!this.resolvedStateVariesAcrossCandidates(order))
+                continue;
+
+            order.resolved = true;
+            order.verdict = false;
+        }
+
+        return adjustedResolution;
+
+    }
+
+    /**
+     * Returns true if a submitted order's resolved/unresolved state differs
+     * across every raw trial collected for every verdict-level candidate.<br><br>
+     *
+     * `resolutionKey(...)` intentionally ignores `resolved`; therefore this
+     * method must use CandidateObservation's aggregate state rather than one
+     * arbitrary first-discovered representative stored in `resolutions`.
+     */
+    private boolean resolvedStateVariesAcrossCandidates(Order order) {
+
+        boolean observedResolved = false;
+        boolean observedUnresolved = false;
+
+        for (CandidateObservation observation :
+                this.candidateObservations.values()) {
+
+            if (observation.hasObservedResolvedState(order, true))
+                observedResolved = true;
+
+            if (observation.hasObservedResolvedState(order, false))
+                observedUnresolved = true;
+
+            if (observedResolved && observedUnresolved)
+                return true;
+        }
+
+        return false;
+
+    }
+
+    /**
+     * Finds submitted convoy orders whose adjudication differs across raw
+     * candidate resolutions.<br><br>
+     *
+     * A transformed Szykman HOLD is treated as its original convoy by using
+     * its retained snapshot.
+     */
+    private Map<String, Order> findConflictingConvoys(Collection<Set<Order>> resolutions) {
+
+        Map<String, Order> conflictingConvoys = new LinkedHashMap<>();
+
+        for (Set<Order> resolution : resolutions) {
+            for (Order convoyOrder :
+                    convoyOrdersIncludingSzykmanHolds(resolution)) {
+
+                boolean differsAcrossResolutions = false;
+
+                for (Set<Order> otherResolution : resolutions) {
+
+                    Order matchingOrder = findMatchingOriginalOrder(
+                            convoyOrder,
+                            otherResolution
+                    );
+
+                    if (matchingOrder == null
+                            || !sameAdjudicationOutcome(
+                            convoyOrder,
+                            matchingOrder
+                    )) {
+                        differsAcrossResolutions = true;
+                        break;
+                    }
+                }
+
+                if (differsAcrossResolutions) {
+
+                    Order originalConvoy = new Order(
+                            originalOrderOf(convoyOrder)
+                    );
+
+                    conflictingConvoys.putIfAbsent(
+                            orderIdentityKey(originalConvoy),
+                            originalConvoy
+                    );
+                }
+            }
+        }
+
+        return conflictingConvoys;
+
+    }
+
+
+    // Candidate identity helpers \\
+
+    private static String resolutionKey(Collection<Order> resolution) {
+
+        List<String> entries = new ArrayList<>();
+
+        for (Order order : resolution) {
+            entries.add(
+                    orderIdentityKey(order)
+                            + "\u001Fverdict=" + order.verdict
+                            + "\u001Fsnapshot=" + snapshotIdentityKey(order)
+            );
+        }
+
+        Collections.sort(entries);
+        return String.join("\n", entries);
+
+    }
+
+    private static String orderIdentityKey(Order order) {
+
+        return String.valueOf(order.owner)
+                + "\u001F" + String.valueOf(order.unitType)
+                + "\u001F" + String.valueOf(order.orderType)
+                + "\u001F" + String.valueOf(order.pos0)
+                + "\u001F" + String.valueOf(order.pos1)
+                + "\u001F" + String.valueOf(order.pos2)
+                + "\u001F" + order.dislodged;
+
+    }
+
+    private static String snapshotIdentityKey(Order order) {
+
+        Order snapshot = order.getSnapshot();
+
+        if (snapshot == null)
+            return "<none>";
+
+        return orderIdentityKey(snapshot);
+
+    }
+
+    private static Order originalOrderOf(Order order) {
+
+        Order snapshot = order.getSnapshot();
+
+        if (snapshot != null)
+            return snapshot;
+
+        return order;
+
+    }
+
+    private static boolean sameOriginalOrder(Order first, Order second) {
+        return originalOrderOf(first).equals(originalOrderOf(second));
+    }
+
+    private static boolean sameAdjudicationOutcome(Order first, Order second) {
+
+        return first.resolved == second.resolved
+                && first.verdict == second.verdict
+                && (first.getSnapshot() != null)
+                == (second.getSnapshot() != null);
+
+    }
+
+    private static Order findMatchingOriginalOrder(Order candidate, Collection<Order> resolution) {
+
+        for (Order order : resolution) {
+            if (sameOriginalOrder(candidate, order))
+                return order;
+        }
+
+        return null;
+
+    }
+
+    private static Collection<Order> convoyOrdersIncludingSzykmanHolds(Collection<Order> resolution) {
+
+        Collection<Order> convoyOrders = new ArrayList<>();
+
+        for (Order order : resolution) {
+            if (originalOrderOf(order).orderType == OrderType.CONVOY)
+                convoyOrders.add(order);
+        }
+
+        return convoyOrders;
+
+    }
+
+
+    // Nested diagnostic type(s) \\
 
     /**
      * Diagnostic information for one distinct raw Judge outcome observed during
@@ -532,362 +913,5 @@ public class Referee extends Judge {
 
     }
 
-
-    /**
-     * Deterministically selects the most successful candidate from candidates
-     * already tied on the number of resolved orders.
-     *
-     * A lexicographically ordered resolution key is used only as a final stable
-     * tie-breaker. This prevents HashSet iteration order from deciding a final
-     * Referee outcome.
-     */
-    private Set<Order> selectMostSuccessfulCandidate(
-            Collection<Set<Order>> candidates
-    ) {
-
-        Set<Order> selected = null;
-        int highestSuccessfulCount = -1;
-        String selectedKey = null;
-
-        for (Set<Order> candidate : candidates) {
-
-            int successfulCount = 0;
-
-            for (Order order : candidate) {
-                if (order.verdict)
-                    successfulCount++;
-            }
-
-            String candidateKey = resolutionKey(candidate);
-
-            if (selected == null
-                    || successfulCount > highestSuccessfulCount
-                    || (successfulCount == highestSuccessfulCount
-                    && candidateKey.compareTo(selectedKey) < 0)) {
-
-                selected = candidate;
-                highestSuccessfulCount = successfulCount;
-                selectedKey = candidateKey;
-            }
-        }
-
-        return selected;
-    }
-
-    /**
-     * Applies the narrow one-conflicting-convoy resolution policy.<br><br>
-     *
-     * The policy is intentionally conservative:<br><br>
-     *
-     * 1. There must be exactly one conflicting convoy.
-     * 2. The selected candidate must already resolve that convoy as failed.
-     * 3. The associated convoyed army must already fail in the selected result.
-     * 4. A successful move directly attacking the convoy fleet must have an
-     *    unstable `resolved` state across raw candidates.<br><br>
-     *
-     * A matching move satisfying all conditions is forced to fail. This retains
-     * the selected candidate's result for every unrelated order.
-     */
-    private Set<Order> applySingleConvoyParadoxRule(Set<Order> selectedResolution) {
-
-        Map<String, Order> conflictingConvoys =
-                this.findConflictingConvoys(this.resolutions.values());
-
-        if (conflictingConvoys.size() != 1)
-            return selectedResolution;
-
-        Order conflictingConvoy =
-                conflictingConvoys.values().iterator().next();
-
-        Order selectedConvoy = findMatchingOriginalOrder(
-                conflictingConvoy,
-                selectedResolution
-        );
-
-        if (selectedConvoy == null
-                || selectedConvoy.verdict) {
-            return selectedResolution;
-        }
-
-        Order correspondingMove = Orders.locateCorresponding(
-                conflictingConvoy,
-                selectedResolution
-        );
-
-        if (correspondingMove == null
-                || correspondingMove.verdict) {
-            return selectedResolution;
-        }
-
-        Set<Order> adjustedResolution = new LinkedHashSet<>(
-                Orders.deepCopy(selectedResolution)
-        );
-
-        for (Order order : adjustedResolution) {
-
-            if (order.orderType != OrderType.MOVE)
-                continue;
-
-            /*
-             * Only direct attacks on the paradoxical convoy fleet are in scope.
-             */
-            if (!Province.equalsIgnoreCoast(
-                    order.pos1,
-                    conflictingConvoy.pos0
-            )) {
-                continue;
-            }
-
-            /*
-             * The convoyed army is not attacking the convoy fleet's province
-             * in the F17 shape, but exclude it explicitly for safety.
-             */
-            if (sameOriginalOrder(order, correspondingMove))
-                continue;
-
-            /*
-             * A normal direct attack remains untouched. Only one whose
-             * resolution bookkeeping differs across raw candidates belongs to
-             * the contradictory convoy dependency.
-             */
-            if (!this.resolvedStateVariesAcrossCandidates(order))
-                continue;
-
-            order.resolved = true;
-            order.verdict = false;
-        }
-
-        return adjustedResolution;
-    }
-
-    /**
-     * Returns true if a submitted order's resolved/unresolved state differs
-     * across every raw trial collected for every verdict-level candidate.<br><br>
-     *
-     * `resolutionKey(...)` intentionally ignores `resolved`; therefore this
-     * method must use CandidateObservation's aggregate state rather than one
-     * arbitrary first-discovered representative stored in `resolutions`.
-     */
-    private boolean resolvedStateVariesAcrossCandidates(Order order) {
-
-        boolean observedResolved = false;
-        boolean observedUnresolved = false;
-
-        for (CandidateObservation observation :
-                this.candidateObservations.values()) {
-
-            if (observation.hasObservedResolvedState(order, true))
-                observedResolved = true;
-
-            if (observation.hasObservedResolvedState(order, false))
-                observedUnresolved = true;
-
-            if (observedResolved && observedUnresolved)
-                return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Finds submitted convoy orders whose adjudication differs across raw
-     * candidate resolutions.<br><br>
-     *
-     * A transformed Szykman HOLD is treated as its original convoy by using
-     * its retained snapshot.
-     */
-    private Map<String, Order> findConflictingConvoys(Collection<Set<Order>> resolutions) {
-
-        Map<String, Order> conflictingConvoys = new LinkedHashMap<>();
-
-        for (Set<Order> resolution : resolutions) {
-            for (Order convoyOrder :
-                    convoyOrdersIncludingSzykmanHolds(resolution)) {
-
-                boolean differsAcrossResolutions = false;
-
-                for (Set<Order> otherResolution : resolutions) {
-
-                    Order matchingOrder = findMatchingOriginalOrder(
-                            convoyOrder,
-                            otherResolution
-                    );
-
-                    if (matchingOrder == null
-                            || !sameAdjudicationOutcome(
-                            convoyOrder,
-                            matchingOrder
-                    )) {
-                        differsAcrossResolutions = true;
-                        break;
-                    }
-                }
-
-                if (differsAcrossResolutions) {
-
-                    Order originalConvoy = new Order(
-                            originalOrderOf(convoyOrder)
-                    );
-
-                    conflictingConvoys.putIfAbsent(
-                            orderIdentityKey(originalConvoy),
-                            originalConvoy
-                    );
-                }
-            }
-        }
-
-        return conflictingConvoys;
-
-    }
-
-
-    private static String resolutionKey(Collection<Order> resolution) {
-
-        List<String> entries = new ArrayList<>();
-
-        for (Order order : resolution) {
-            entries.add(
-                    orderIdentityKey(order)
-                            + "\u001Fverdict=" + order.verdict
-                            + "\u001Fsnapshot=" + snapshotIdentityKey(order)
-            );
-        }
-
-        Collections.sort(entries);
-        return String.join("\n", entries);
-
-    }
-
-    private static String orderIdentityKey(Order order) {
-
-        return String.valueOf(order.owner)
-                + "\u001F" + String.valueOf(order.unitType)
-                + "\u001F" + String.valueOf(order.orderType)
-                + "\u001F" + String.valueOf(order.pos0)
-                + "\u001F" + String.valueOf(order.pos1)
-                + "\u001F" + String.valueOf(order.pos2)
-                + "\u001F" + order.dislodged;
-
-    }
-
-    private static String snapshotIdentityKey(Order order) {
-
-        Order snapshot = order.getSnapshot();
-
-        if (snapshot == null)
-            return "<none>";
-
-        return orderIdentityKey(snapshot);
-
-    }
-
-    private static Order originalOrderOf(Order order) {
-
-        Order snapshot = order.getSnapshot();
-
-        if (snapshot != null)
-            return snapshot;
-
-        return order;
-
-    }
-
-    private static boolean sameOriginalOrder(Order first, Order second) {
-        return originalOrderOf(first).equals(originalOrderOf(second));
-    }
-
-    private static boolean sameAdjudicationOutcome(Order first, Order second) {
-
-        return first.resolved == second.resolved
-                && first.verdict == second.verdict
-                && (first.getSnapshot() != null)
-                == (second.getSnapshot() != null);
-
-    }
-
-    private static Order findMatchingOriginalOrder(Order candidate, Collection<Order> resolution) {
-
-        for (Order order : resolution) {
-            if (sameOriginalOrder(candidate, order))
-                return order;
-        }
-
-        return null;
-
-    }
-
-    private static Collection<Order> convoyOrdersIncludingSzykmanHolds(Collection<Order> resolution) {
-
-        Collection<Order> convoyOrders = new ArrayList<>();
-
-        for (Order order : resolution) {
-            if (originalOrderOf(order).orderType == OrderType.CONVOY)
-                convoyOrders.add(order);
-        }
-
-        return convoyOrders;
-
-    }
-
-
-    /**
-     * Handles paradoxical situations involving conflicting convoy outcomes by
-     * replacing each conflicting convoy with a snapshot-backed HOLD.
-     * (This is a 'programmatic hold')<br><br>
-     *
-     * Returns a new collection and does not mutate the candidate resolutions.<br><br>
-     *
-     * This existing helper is used only in the historical tie-handling branch.
-     * The F17 single-convoy rule above deliberately does not call this method,
-     * because a transformed HOLD is not itself the final disrupted-convoy
-     * result.
-     */
-    private Collection<Order> szykmanRule(Collection<Set<Order>> resolutions) {
-
-        if (resolutions.isEmpty())
-            return Collections.emptyList();
-
-        Map<String, Order> conflictingConvoys =
-                this.findConflictingConvoys(resolutions);
-
-        /*
-         * Begin with a representative resolution. The replacements below
-         * overwrite only orders identified as conflicting convoys.
-         */
-        Set<Order> representativeResolution =
-                resolutions.iterator().next();
-
-        Collection<Order> verdict = new LinkedHashSet<>();
-
-        for (Order order : representativeResolution) {
-
-            Order originalOrder = originalOrderOf(order);
-            String originalKey = orderIdentityKey(originalOrder);
-
-            if (conflictingConvoys.containsKey(originalKey))
-                continue;
-
-            verdict.add(new Order(order));
-        }
-
-        /*
-         * Replace each genuinely conflicting convoy by a HOLD while preserving
-         * the original convoy in the replacement order's snapshot.
-         */
-        for (Order originalConvoy : conflictingConvoys.values()) {
-
-            Order szykmanHold = new Order(originalConvoy);
-
-            szykmanHold.takeSnapshot();
-            szykmanHold.orderType = OrderType.HOLD;
-            szykmanHold.pos1 = null;
-            szykmanHold.pos2 = null;
-
-            verdict.add(szykmanHold);
-        }
-
-        return verdict;
-    }
 
 }
